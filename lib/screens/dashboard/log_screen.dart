@@ -76,10 +76,10 @@ class _LogScreenState extends State<LogScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'PUSH A — CHEST & SHOULDERS',
                 style: TextStyle(
-                  color: Color(0xFFE8FF47),
+                  color: theme.accent,
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
@@ -120,9 +120,9 @@ class _LogScreenState extends State<LogScreen> {
                             ),
                             Row(
                               children: [
-                                _tagButton('HOW', const Color(0xFF47C8FF)),
+                                _tagButton('HOW', theme.blue),
                                 const SizedBox(width: 6),
-                                _tagButton('ALT', const Color(0xFFE8FF47)),
+                                _tagButton('ALT', theme.accent),
                               ],
                             ),
                           ],
@@ -193,9 +193,7 @@ class _LogScreenState extends State<LogScreen> {
                                 child: Text(
                                   '${si + 1}',
                                   style: TextStyle(
-                                    color: done
-                                        ? theme.green
-                                        : const Color(0xFFE8FF47),
+                                    color: done ? theme.green : theme.accent,
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -294,8 +292,8 @@ class _LogScreenState extends State<LogScreen> {
                 child: ElevatedButton(
                   onPressed: () {},
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE8FF47),
-                    foregroundColor: Colors.black,
+                    backgroundColor: theme.accent,
+                    foregroundColor: theme.accentText,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),

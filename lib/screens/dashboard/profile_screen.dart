@@ -12,9 +12,7 @@ class ProfileScreen extends StatelessWidget {
     final theme = context.watch<ThemeProvider>();
 
     if (user.isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFFE8FF47)),
-      );
+      return Center(child: CircularProgressIndicator(color: theme.accent));
     }
 
     return SingleChildScrollView(
@@ -34,16 +32,16 @@ class ProfileScreen extends StatelessWidget {
                 Container(
                   width: 52,
                   height: 52,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFE8FF47),
+                  decoration: BoxDecoration(
+                    color: theme.accent,
                     shape: BoxShape.circle,
                   ),
                   child: Center(
                     child: Text(
                       '${user.firstName.isNotEmpty ? user.firstName[0] : ''}${user.lastName.isNotEmpty ? user.lastName[0] : ''}'
                           .toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.black,
+                      style: TextStyle(
+                        color: theme.accentText,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
@@ -72,9 +70,12 @@ class ProfileScreen extends StatelessWidget {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        _StatPill(label: 'DAY ${user.dayNumber}'),
+                        _StatPill(label: 'DAY ${user.dayNumber}', theme: theme),
                         const SizedBox(width: 8),
-                        _StatPill(label: '${user.daysLeft} DAYS LEFT'),
+                        _StatPill(
+                          label: '${user.daysLeft} DAYS LEFT',
+                          theme: theme,
+                        ),
                       ],
                     ),
                   ],
@@ -108,8 +109,8 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     Text(
                       '${(user.progress * 100).round()}%',
-                      style: const TextStyle(
-                        color: Color(0xFFE8FF47),
+                      style: TextStyle(
+                        color: theme.accent,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -122,7 +123,7 @@ class ProfileScreen extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: user.progress,
                     backgroundColor: theme.surface2,
-                    valueColor: const AlwaysStoppedAnimation(Color(0xFFE8FF47)),
+                    valueColor: AlwaysStoppedAnimation(theme.accent),
                     minHeight: 6,
                   ),
                 ),
@@ -159,6 +160,7 @@ class ProfileScreen extends StatelessWidget {
                   label: 'WEIGHT',
                   value: user.measurements['weight']?.toString() ?? '--',
                   unit: 'kg',
+                  theme: theme,
                 ),
               ),
               const SizedBox(width: 10),
@@ -167,6 +169,7 @@ class ProfileScreen extends StatelessWidget {
                   label: 'WAIST',
                   value: user.measurements['waist']?.toString() ?? '--',
                   unit: 'cm',
+                  theme: theme,
                 ),
               ),
               const SizedBox(width: 10),
@@ -175,6 +178,7 @@ class ProfileScreen extends StatelessWidget {
                   label: 'CHEST',
                   value: user.measurements['chest']?.toString() ?? '--',
                   unit: 'cm',
+                  theme: theme,
                 ),
               ),
             ],
@@ -196,9 +200,7 @@ class ProfileScreen extends StatelessWidget {
                       children: [
                         Icon(
                           theme.isDark ? Icons.dark_mode : Icons.light_mode,
-                          color: theme.isDark
-                              ? const Color(0xFFE8FF47)
-                              : const Color(0xFF1A1A1A),
+                          color: theme.accent,
                           size: 20,
                         ),
                         const SizedBox(width: 12),
@@ -215,9 +217,11 @@ class ProfileScreen extends StatelessWidget {
                     Switch(
                       value: theme.isDark,
                       onChanged: (_) => theme.toggleTheme(),
-                      activeThumbColor: const Color(0xFFE8FF47),
+                      activeThumbColor: theme.accent,
                       activeTrackColor: theme.accent.withValues(alpha: 0.25),
-                      inactiveThumbColor: const Color(0xFF1A1A1A),
+                      inactiveThumbColor: theme.isDark
+                          ? theme.surface2
+                          : theme.textPrimary,
                       inactiveTrackColor: theme.border,
                     ),
                   ],
@@ -232,23 +236,19 @@ class ProfileScreen extends StatelessWidget {
 }
 
 class _StatPill extends StatelessWidget {
-  const _StatPill({required this.label});
+  const _StatPill({required this.label, required this.theme});
   final String label;
+  final ThemeProvider theme;
 
   @override
   Widget build(BuildContext context) {
-    final theme = context.watch<ThemeProvider>();
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: theme.accent.withValues(alpha: 0.13),
+        color: theme.accentLight,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(
-        label,
-        style: const TextStyle(color: Color(0xFFE8FF47), fontSize: 10),
-      ),
+      child: Text(label, style: TextStyle(color: theme.accent, fontSize: 10)),
     );
   }
 }
@@ -258,15 +258,15 @@ class _MeasurementCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.unit,
+    required this.theme,
   });
   final String label;
   final String value;
   final String unit;
+  final ThemeProvider theme;
 
   @override
   Widget build(BuildContext context) {
-    final theme = context.watch<ThemeProvider>();
-
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -278,8 +278,8 @@ class _MeasurementCard extends StatelessWidget {
         children: [
           Text(
             value,
-            style: const TextStyle(
-              color: Color(0xFFE8FF47),
+            style: TextStyle(
+              color: theme.accent,
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),

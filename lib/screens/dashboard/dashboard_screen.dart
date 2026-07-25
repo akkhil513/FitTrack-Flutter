@@ -43,7 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     // Yellow top bar — stays same
                     Container(
-                      color: const Color(0xFFE8FF47),
+                      color: theme.headerYellow,
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -54,17 +54,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: [
                           Text(
                             'DAY ${user.dayNumber} / 100',
-                            style: const TextStyle(
-                              color: Colors.black,
+                            style: TextStyle(
+                              color: theme.headerText,
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1,
                             ),
                           ),
-                          const Text(
+                          Text(
                             '100 DAY CHALLENGE',
                             style: TextStyle(
-                              color: Colors.black54,
+                              color: theme.headerText.withValues(alpha: 0.7),
                               fontSize: 10,
                               letterSpacing: 2,
                             ),
@@ -138,7 +138,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             currentIndex: _currentIndex,
             onTap: (i) => setState(() => _currentIndex = i),
             backgroundColor: theme.surface,
-            selectedItemColor: const Color(0xFFE8FF47),
+            selectedItemColor: theme.accent,
             unselectedItemColor: theme.textSecondary,
             type: BottomNavigationBarType.fixed,
             items: const [

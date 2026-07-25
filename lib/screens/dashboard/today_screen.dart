@@ -46,8 +46,8 @@ class _TodayScreenState extends State<TodayScreen> {
                   children: [
                     Text(
                       '$_doneCount/${_checked.length}',
-                      style: const TextStyle(
-                        color: Color(0xFFE8FF47),
+                      style: TextStyle(
+                        color: theme.accent,
                         fontSize: 36,
                         fontWeight: FontWeight.bold,
                       ),
@@ -68,9 +68,7 @@ class _TodayScreenState extends State<TodayScreen> {
                           LinearProgressIndicator(
                             value: _doneCount / _checked.length,
                             backgroundColor: theme.border,
-                            valueColor: const AlwaysStoppedAnimation(
-                              Color(0xFFE8FF47),
-                            ),
+                            valueColor: AlwaysStoppedAnimation(theme.accent),
                           ),
                         ],
                       ),

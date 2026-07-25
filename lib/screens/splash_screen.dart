@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/theme_provider.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -41,8 +43,10 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = context.watch<ThemeProvider>();
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: theme.background,
       body: FadeTransition(
         opacity: _fadeAnim,
         child: Center(
@@ -51,30 +55,30 @@ class _SplashScreenState extends State<SplashScreen>
             children: [
               const Text('💪', style: TextStyle(fontSize: 72)),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'FITTRACK',
                 style: TextStyle(
-                  color: Color(0xFFE8FF47),
+                  color: theme.accent,
                   fontSize: 48,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 8,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 '100 DAY CHALLENGE',
                 style: TextStyle(
-                  color: Color(0xFF555555),
+                  color: theme.textSecondary,
                   fontSize: 12,
                   letterSpacing: 4,
                 ),
               ),
               const SizedBox(height: 48),
-              const SizedBox(
+              SizedBox(
                 width: 200,
                 child: LinearProgressIndicator(
-                  backgroundColor: Color(0xFF1A1A1A),
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFE8FF47)),
+                  backgroundColor: theme.surface2,
+                  valueColor: AlwaysStoppedAnimation<Color>(theme.accent),
                 ),
               ),
             ],

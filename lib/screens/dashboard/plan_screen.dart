@@ -12,9 +12,7 @@ class PlanScreen extends StatelessWidget {
     final theme = context.watch<ThemeProvider>();
 
     if (plan.isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFFE8FF47)),
-      );
+      return Center(child: CircularProgressIndicator(color: theme.accent));
     }
 
     if (!plan.hasplan) {
@@ -49,7 +47,7 @@ class PlanScreen extends StatelessWidget {
             _PlanCard(
               emoji: '🎯',
               title: 'STRATEGY',
-              color: const Color(0xFFE8FF47),
+              color: theme.accent,
               content: plan.plan!['strategy'].toString(),
             ),
             const SizedBox(height: 12),
@@ -105,7 +103,7 @@ class PlanScreen extends StatelessWidget {
             _PlanCard(
               emoji: '💊',
               title: 'SUPPLEMENTS',
-              color: const Color(0xFFFF6B35),
+              color: theme.orange,
               content: plan.plan!['supplements'].toString(),
             ),
             const SizedBox(height: 12),
@@ -116,7 +114,7 @@ class PlanScreen extends StatelessWidget {
             _PlanCard(
               emoji: '🥩',
               title: 'NUTRITION',
-              color: const Color(0xFF4ADE80),
+              color: theme.green,
               content: plan.plan!['nutrition'].toString(),
             ),
             const SizedBox(height: 12),
@@ -127,7 +125,7 @@ class PlanScreen extends StatelessWidget {
             _PlanCard(
               emoji: '😴',
               title: 'RECOVERY',
-              color: const Color(0xFFA78BFA),
+              color: theme.purple,
               content: plan.plan!['recovery'].toString(),
             ),
           ],
@@ -227,7 +225,7 @@ class _DayCard extends StatelessWidget {
               day,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: isRest ? theme.textSecondary : const Color(0xFFE8FF47),
+                color: isRest ? theme.textSecondary : theme.accent,
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1,

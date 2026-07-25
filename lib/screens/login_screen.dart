@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/plan_provider.dart';
+import '../providers/theme_provider.dart';
 import '../widgets/input_decoration.dart';
 import 'register_screen.dart';
 import 'dashboard/dashboard_screen.dart';
@@ -50,9 +51,10 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final theme = context.watch<ThemeProvider>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: theme.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -60,35 +62,35 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'FITTRACK',
                 style: TextStyle(
-                  color: Color(0xFFE8FF47),
+                  color: theme.accent,
                   fontSize: 14,
                   letterSpacing: 4,
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'WELCOME\nBACK',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: theme.textPrimary,
                   fontSize: 42,
                   fontWeight: FontWeight.bold,
                   height: 1.1,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Sign in to your 100-day challenge',
-                style: TextStyle(color: Color(0xFF555555), fontSize: 14),
+                style: TextStyle(color: theme.textSecondary, fontSize: 14),
               ),
               const SizedBox(height: 24),
 
-              const Text(
+              Text(
                 'EMAIL',
                 style: TextStyle(
-                  color: Color(0xFF555555),
+                  color: theme.textSecondary,
                   fontSize: 11,
                   letterSpacing: 2,
                 ),
@@ -97,15 +99,15 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                style: const TextStyle(color: Colors.white),
-                decoration: fitTrackInput('you@example.com'),
+                style: TextStyle(color: theme.textPrimary),
+                decoration: fitTrackInput('you@example.com', theme),
               ),
               const SizedBox(height: 16),
 
-              const Text(
+              Text(
                 'PASSWORD',
                 style: TextStyle(
-                  color: Color(0xFF555555),
+                  color: theme.textSecondary,
                   fontSize: 11,
                   letterSpacing: 2,
                 ),
@@ -114,8 +116,8 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _passwordController,
                 obscureText: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: fitTrackInput('••••••••'),
+                style: TextStyle(color: theme.textPrimary),
+                decoration: fitTrackInput('••••••••', theme),
                 onSubmitted: (_) => _login(),
               ),
 
@@ -135,15 +137,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: ElevatedButton(
                   onPressed: auth.isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE8FF47),
-                    foregroundColor: Colors.black,
+                    backgroundColor: theme.accent,
+                    foregroundColor: theme.accentText,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   child: auth.isLoading
-                      ? const CircularProgressIndicator(color: Colors.black)
-                      : const Text(
+                      ? CircularProgressIndicator(color: theme.accentText)
+                      : Text(
                           'SIGN IN →',
                           style: TextStyle(
                             fontSize: 16,
@@ -158,19 +160,19 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     'No account? ',
-                    style: TextStyle(color: Color(0xFF555555), fontSize: 14),
+                    style: TextStyle(color: theme.textSecondary, fontSize: 14),
                   ),
                   GestureDetector(
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const RegisterScreen()),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Sign up',
                       style: TextStyle(
-                        color: Color(0xFFE8FF47),
+                        color: theme.accent,
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),

@@ -30,8 +30,8 @@ class FitTrackApp extends StatelessWidget {
             theme: ThemeData(
               scaffoldBackgroundColor: theme.background,
               colorScheme: theme.isDark
-                  ? const ColorScheme.dark(primary: Color(0xFFE8FF47))
-                  : const ColorScheme.light(primary: Color(0xFF1A1A1A)),
+                  ? ColorScheme.dark(primary: theme.accent)
+                  : ColorScheme.light(primary: theme.accent),
               fontFamily: 'DM Sans',
             ),
             home: const SplashScreen(),

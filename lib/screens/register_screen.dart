@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
 import '../widgets/input_decoration.dart';
-import '../services/auth_service.dart';
 import '../services/api_service.dart';
-import 'dashboard/dashboard_screen.dart';
+import '../services/auth_service.dart';
+import 'onboarding_screen.dart';
+import '../providers/theme_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,9 +19,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _codeController = TextEditingController();
-  bool _loading = false;
-  String _error = '';
   String _step = 'register';
+  String _error = '';
+  bool _loading = false;
 
   @override
   void dispose() {
@@ -51,6 +54,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _passwordController.text,
         name: _nameController.text.trim(),
       );
+      // Show OTP screen
       setState(() {
         _loading = false;
         _step = 'verify';
@@ -74,16 +78,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
+      // Confirm signup
       await AuthService.confirmSignUp(
         email: _emailController.text.trim(),
         code: _codeController.text.trim(),
       );
 
+      // Sign in
       await AuthService.signIn(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
+      // Create user in DynamoDB
       await ApiService.createUser(
         userId: AuthService.userId!,
         firstName: _nameController.text.split(' ').first,
@@ -94,10 +101,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         username: _emailController.text.split('@').first,
       );
 
+      // Update providers
       if (mounted) {
+        await context.read<UserProvider>().loadUser(AuthService.userId!);
+
+        // Go to onboarding — NOT dashboard
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
           (route) => false,
         );
       }
@@ -111,61 +122,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = context.watch<ThemeProvider>();
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: theme.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: _step == 'register'
-              ? _buildRegisterForm()
-              : _buildVerifyForm(),
+              ? _buildRegisterForm(theme)
+              : _buildVerifyForm(theme),
         ),
       ),
     );
   }
 
-  Widget _buildRegisterForm() {
+  Widget _buildRegisterForm(ThemeProvider theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
           onTap: () => Navigator.pop(context),
-          child: const Icon(
+          child: Icon(
             Icons.arrow_back_ios,
-            color: Color(0xFF555555),
+            color: theme.textSecondary,
             size: 20,
           ),
         ),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           'FITTRACK',
-          style: TextStyle(
-            color: Color(0xFFE8FF47),
-            fontSize: 14,
-            letterSpacing: 4,
-          ),
+          style: TextStyle(color: theme.accent, fontSize: 14, letterSpacing: 4),
         ),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           'JOIN THE\nCHALLENGE',
           style: TextStyle(
-            color: Colors.white,
+            color: theme.textPrimary,
             fontSize: 42,
             fontWeight: FontWeight.bold,
             height: 1.1,
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Create your free account',
-          style: TextStyle(color: Color(0xFF555555), fontSize: 14),
+          style: TextStyle(color: theme.textSecondary, fontSize: 14),
         ),
         const SizedBox(height: 32),
 
-        const Text(
+        Text(
           'FULL NAME',
           style: TextStyle(
-            color: Color(0xFF555555),
+            color: theme.textSecondary,
             fontSize: 11,
             letterSpacing: 2,
           ),
@@ -173,15 +182,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SizedBox(height: 8),
         TextField(
           controller: _nameController,
-          style: const TextStyle(color: Colors.white),
-          decoration: fitTrackInput('Akhil Gollapalli'),
+          style: TextStyle(color: theme.textPrimary),
+          decoration: fitTrackInput('Alex Johnson', theme),
         ),
         const SizedBox(height: 16),
 
-        const Text(
+        Text(
           'EMAIL',
           style: TextStyle(
-            color: Color(0xFF555555),
+            color: theme.textSecondary,
             fontSize: 11,
             letterSpacing: 2,
           ),
@@ -190,15 +199,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         TextField(
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,
-          style: const TextStyle(color: Colors.white),
-          decoration: fitTrackInput('you@example.com'),
+          style: TextStyle(color: theme.textPrimary),
+          decoration: fitTrackInput('you@example.com', theme),
         ),
         const SizedBox(height: 16),
 
-        const Text(
+        Text(
           'PASSWORD',
           style: TextStyle(
-            color: Color(0xFF555555),
+            color: theme.textSecondary,
             fontSize: 11,
             letterSpacing: 2,
           ),
@@ -207,8 +216,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         TextField(
           controller: _passwordController,
           obscureText: true,
-          style: const TextStyle(color: Colors.white),
-          decoration: fitTrackInput('Min 8 chars, 1 uppercase, 1 number'),
+          style: TextStyle(color: theme.textPrimary),
+          decoration: fitTrackInput(
+            'Min 8 chars, 1 uppercase, 1 number',
+            theme,
+          ),
         ),
 
         if (_error.isNotEmpty) ...[
@@ -224,15 +236,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: ElevatedButton(
             onPressed: _loading ? null : _register,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE8FF47),
-              foregroundColor: Colors.black,
+              backgroundColor: theme.accent,
+              foregroundColor: theme.accentText,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
             child: _loading
-                ? const CircularProgressIndicator(color: Colors.black)
-                : const Text(
+                ? CircularProgressIndicator(color: theme.accentText)
+                : Text(
                     'CREATE ACCOUNT →',
                     style: TextStyle(
                       fontSize: 16,
@@ -247,16 +259,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
+            Text(
               'Already have an account? ',
-              style: TextStyle(color: Color(0xFF555555), fontSize: 14),
+              style: TextStyle(color: theme.textSecondary, fontSize: 14),
             ),
             GestureDetector(
               onTap: () => Navigator.pop(context),
-              child: const Text(
+              child: Text(
                 'Sign in',
                 style: TextStyle(
-                  color: Color(0xFFE8FF47),
+                  color: theme.accent,
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
@@ -268,32 +280,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildVerifyForm() {
+  Widget _buildVerifyForm(ThemeProvider theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
           onTap: () => setState(() => _step = 'register'),
-          child: const Icon(
+          child: Icon(
             Icons.arrow_back_ios,
-            color: Color(0xFF555555),
+            color: theme.textSecondary,
             size: 20,
           ),
         ),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           'FITTRACK',
-          style: TextStyle(
-            color: Color(0xFFE8FF47),
-            fontSize: 14,
-            letterSpacing: 4,
-          ),
+          style: TextStyle(color: theme.accent, fontSize: 14, letterSpacing: 4),
         ),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           'CHECK YOUR\nEMAIL',
           style: TextStyle(
-            color: Colors.white,
+            color: theme.textPrimary,
             fontSize: 42,
             fontWeight: FontWeight.bold,
             height: 1.1,
@@ -302,14 +310,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SizedBox(height: 8),
         Text(
           'We sent a 6-digit code to ${_emailController.text}',
-          style: const TextStyle(color: Color(0xFF555555), fontSize: 14),
+          style: TextStyle(color: theme.textSecondary, fontSize: 14),
         ),
         const SizedBox(height: 32),
 
-        const Text(
+        Text(
           'VERIFICATION CODE',
           style: TextStyle(
-            color: Color(0xFF555555),
+            color: theme.textSecondary,
             fontSize: 11,
             letterSpacing: 2,
           ),
@@ -319,12 +327,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           controller: _codeController,
           keyboardType: TextInputType.number,
           maxLength: 6,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: theme.textPrimary,
             fontSize: 28,
             letterSpacing: 12,
           ),
-          decoration: fitTrackInput('123456').copyWith(counterText: ''),
+          decoration: fitTrackInput('123456', theme).copyWith(counterText: ''),
         ),
 
         if (_error.isNotEmpty) ...[
@@ -340,16 +348,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: ElevatedButton(
             onPressed: _loading ? null : _verify,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE8FF47),
-              foregroundColor: Colors.black,
+              backgroundColor: theme.accent,
+              foregroundColor: theme.accentText,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
             child: _loading
-                ? const CircularProgressIndicator(color: Colors.black)
-                : const Text(
-                    'VERIFY →',
+                ? CircularProgressIndicator(color: theme.accentText)
+                : Text(
+                    'VERIFY & CONTINUE →',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

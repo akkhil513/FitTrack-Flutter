@@ -19,10 +19,11 @@ class ThemeProvider extends ChangeNotifier {
       _isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0);
   Color get textPrimary => _isDark ? Colors.white : const Color(0xFF1A1A1A);
   Color get textSecondary =>
-      _isDark ? const Color(0xFF555555) : const Color(0xFF666666);
+      _isDark ? const Color(0xFF555555) : const Color(0xFF374151);
 
   // Accent changes based on theme
-  Color get accent => _isDark ? const Color(0xFFE8FF47) : const Color(0xFF1A1A1A);
+  Color get accent =>
+      _isDark ? const Color(0xFFE8FF47) : const Color(0xFF1A1A1A);
   // 0x22 alpha tint of the accent — alpha is the leading byte.
   Color get accentLight =>
       _isDark ? const Color(0x22E8FF47) : const Color(0x221A1A1A);

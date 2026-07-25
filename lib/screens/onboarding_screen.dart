@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/plan_provider.dart';
 import '../providers/theme_provider.dart';
-import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../widgets/app_background.dart';
 import 'dashboard/dashboard_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -152,15 +152,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final theme = context.watch<ThemeProvider>();
 
     return Scaffold(
-      backgroundColor: theme.background,
-      body: SafeArea(
-        child: _step == 6 ? _buildGenerating(theme) : _buildSteps(theme),
+      body: AppBackground(
+        theme: theme,
+        motifs: const [
+          Icons.self_improvement,
+          Icons.directions_walk,
+          Icons.monitor_heart,
+        ],
+        child: SafeArea(
+          child: _step == 6 ? _buildGenerating(theme) : _buildSteps(theme),
+        ),
       ),
     );
   }
 
   Widget _buildGenerating(ThemeProvider theme) {
-    final plan = context.watch<PlanProvider>();
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),

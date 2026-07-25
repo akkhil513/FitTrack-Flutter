@@ -46,39 +46,81 @@ class _SplashScreenState extends State<SplashScreen>
     final theme = context.watch<ThemeProvider>();
 
     return Scaffold(
-      backgroundColor: theme.background,
       body: FadeTransition(
         opacity: _fadeAnim,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF0EA5E9), Color(0xFF06B6D4), Color(0xFF22C55E)],
+            ),
+          ),
+          child: Stack(
             children: [
-              const Text('💪', style: TextStyle(fontSize: 72)),
-              const SizedBox(height: 16),
-              Text(
-                'FITTRACK',
-                style: TextStyle(
-                  color: theme.accent,
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 8,
+              Positioned(
+                top: -60,
+                right: -30,
+                child: Container(
+                  width: 180,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                '100 DAY CHALLENGE',
-                style: TextStyle(
-                  color: theme.textSecondary,
-                  fontSize: 12,
-                  letterSpacing: 4,
+              Positioned(
+                bottom: -40,
+                left: -20,
+                child: Container(
+                  width: 160,
+                  height: 160,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.14),
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
-              const SizedBox(height: 48),
-              SizedBox(
-                width: 200,
-                child: LinearProgressIndicator(
-                  backgroundColor: theme.surface2,
-                  valueColor: AlwaysStoppedAnimation<Color>(theme.accent),
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('💪', style: TextStyle(fontSize: 72)),
+                    const SizedBox(height: 16),
+                    Text(
+                      'FITTRACK',
+                      style: TextStyle(
+                        color: theme.isDark
+                            ? Colors.white
+                            : const Color(0xFF0F172A),
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 8,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '100 DAY CHALLENGE',
+                      style: TextStyle(
+                        color: theme.isDark
+                            ? Colors.white.withValues(alpha: 0.82)
+                            : const Color(0xFF0F172A).withValues(alpha: 0.75),
+                        fontSize: 12,
+                        letterSpacing: 4,
+                      ),
+                    ),
+                    const SizedBox(height: 48),
+                    SizedBox(
+                      width: 200,
+                      child: LinearProgressIndicator(
+                        backgroundColor: Colors.white.withValues(alpha: 0.24),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Color(0xFFFDE047),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import 'onboarding_screen.dart';
 import '../providers/theme_provider.dart';
+import '../widgets/app_background.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -125,13 +126,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final theme = context.watch<ThemeProvider>();
 
     return Scaffold(
-      backgroundColor: theme.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: _step == 'register'
-              ? _buildRegisterForm(theme)
-              : _buildVerifyForm(theme),
+      body: AppBackground(
+        theme: theme,
+        motifs: const [
+          Icons.emoji_people,
+          Icons.directions_bike,
+          Icons.fitness_center,
+        ],
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: _step == 'register'
+                ? _buildRegisterForm(theme)
+                : _buildVerifyForm(theme),
+          ),
         ),
       ),
     );

@@ -57,8 +57,11 @@ class PlanScreen extends StatelessWidget {
           Text(
             'THIS WEEK',
             style: TextStyle(
-              color: theme.textSecondary,
+              color: theme.isDark
+                  ? theme.textSecondary
+                  : const Color(0xFF374151),
               fontSize: 11,
+              fontWeight: FontWeight.w700,
               letterSpacing: 2,
             ),
           ),
@@ -105,6 +108,7 @@ class PlanScreen extends StatelessWidget {
               title: 'SUPPLEMENTS',
               color: theme.orange,
               content: plan.plan!['supplements'].toString(),
+              asBullets: true,
             ),
             const SizedBox(height: 12),
           ],
@@ -116,6 +120,7 @@ class PlanScreen extends StatelessWidget {
               title: 'NUTRITION',
               color: theme.green,
               content: plan.plan!['nutrition'].toString(),
+              asBullets: true,
             ),
             const SizedBox(height: 12),
           ],
@@ -127,6 +132,7 @@ class PlanScreen extends StatelessWidget {
               title: 'RECOVERY',
               color: theme.purple,
               content: plan.plan!['recovery'].toString(),
+              asBullets: true,
             ),
           ],
         ],
@@ -141,11 +147,35 @@ class _PlanCard extends StatelessWidget {
     required this.title,
     required this.color,
     required this.content,
+    this.asBullets = false,
   });
   final String emoji;
   final String title;
   final Color color;
   final String content;
+  final bool asBullets;
+
+  List<String> _toBulletLines(String value) {
+    final normalized = value.replaceAll('\r', '\n');
+    final byLine = normalized
+        .split('\n')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    final lines = <String>[];
+    for (final line in byLine) {
+      final cleaned = line.replaceFirst(RegExp(r'^[•\-\*]\s*'), '').trim();
+      final sentences = cleaned
+          .split(RegExp(r'(?<=[.!?])\s+'))
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      if (sentences.isEmpty) continue;
+      lines.addAll(sentences);
+    }
+    return lines;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -171,14 +201,49 @@ class _PlanCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            content,
-            style: TextStyle(
-              color: theme.textPrimary,
-              fontSize: 13,
-              height: 1.5,
+          if (!asBullets)
+            Text(
+              content,
+              style: TextStyle(
+                color: theme.textPrimary,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: _toBulletLines(content)
+                  .map(
+                    (line) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '• ',
+                            style: TextStyle(
+                              color: theme.textPrimary,
+                              fontSize: 13,
+                              height: 1.5,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              line,
+                              style: TextStyle(
+                                color: theme.textPrimary,
+                                fontSize: 13,
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
-          ),
         ],
       ),
     );

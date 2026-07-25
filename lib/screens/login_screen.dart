@@ -52,12 +52,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final theme = context.watch<ThemeProvider>();
-    final foregroundPrimary = theme.isDark
-        ? Colors.white
-        : const Color(0xFF111827);
-    final foregroundSecondary = theme.isDark
-        ? Colors.white.withValues(alpha: 0.84)
-        : const Color(0xFF1F2937).withValues(alpha: 0.9);
+    final foregroundPrimary = Colors.white;
+    final foregroundSecondary = Colors.white.withValues(alpha: 0.9);
     final foregroundMuted = theme.isDark
         ? Colors.white.withValues(alpha: 0.68)
         : const Color(0xFF374151).withValues(alpha: 0.9);
@@ -68,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
         theme: theme,
         backgroundAssetPath: 'assets/images/login_bg_mobile.jpg',
         showMotifs: false,
-        imageOverlayOpacity: theme.isDark ? 0.42 : 0.56,
+        imageOverlayOpacity: theme.isDark ? 0.42 : 0.62,
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -85,6 +81,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: brandColor,
                         fontSize: 14,
                         letterSpacing: 4,
+                        shadows: const [
+                          Shadow(
+                            color: Color(0xAA000000),
+                            blurRadius: 8,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
                       ),
                     ),
                     InkWell(
@@ -131,12 +134,29 @@ class _LoginScreenState extends State<LoginScreen> {
                     fontSize: 42,
                     fontWeight: FontWeight.bold,
                     height: 1.1,
+                    shadows: const [
+                      Shadow(
+                        color: Color(0xB3000000),
+                        blurRadius: 12,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Sign in to your 100-day challenge',
-                  style: TextStyle(color: foregroundSecondary, fontSize: 14),
+                  style: TextStyle(
+                    color: foregroundSecondary,
+                    fontSize: 14,
+                    shadows: const [
+                      Shadow(
+                        color: Color(0x99000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
                 ),
                 const Spacer(),
                 Container(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/plan_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../widgets/app_background.dart';
@@ -60,21 +61,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'DAY ${user.dayNumber} / 100',
-                              style: TextStyle(
-                                color: theme.headerText,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1,
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      user.dayNumber == 0
+                                          ? 'DAY 0'
+                                          : 'DAY ${user.dayNumber} / ${user.challengeDuration}',
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Consumer<PlanProvider>(
+                                      builder: (context, plan, _) => Text(
+                                        'WK ${plan.weekNumber}',
+                                        style: const TextStyle(
+                                          color: Colors.black,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 1,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            Text(
-                              '100 DAY CHALLENGE',
-                              style: TextStyle(
-                                color: theme.headerText.withValues(alpha: 0.7),
-                                fontSize: 10,
-                                letterSpacing: 2,
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerRight,
+                                child: Text(
+                                  '${user.challengeDuration} DAY CHALLENGE',
+                                  style: TextStyle(
+                                    color: theme.headerText.withValues(
+                                      alpha: 0.7,
+                                    ),
+                                    fontSize: 10,
+                                    letterSpacing: 2,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -145,7 +188,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
         builder: (context, theme, _) {
           return BottomNavigationBar(
             currentIndex: _currentIndex,
-            onTap: (i) => setState(() => _currentIndex = i),
+            onTap: (i) {
+              setState(() => _currentIndex = i);
+
+              // Reload plan when user taps Plan tab (index 1)
+              if (i == 1) {
+                final auth = context.read<AuthProvider>();
+                if (auth.userId != null) {
+                  context.read<PlanProvider>().loadPlan(auth.userId!);
+                }
+              }
+
+              // Reload user when user taps Profile tab (index 3)
+              if (i == 3) {
+                final auth = context.read<AuthProvider>();
+                if (auth.userId != null) {
+                  context.read<UserProvider>().loadUser(auth.userId!);
+                }
+              }
+            },
             backgroundColor: theme.surface,
             selectedItemColor: theme.accent,
             unselectedItemColor: theme.textSecondary,

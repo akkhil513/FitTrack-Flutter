@@ -28,6 +28,15 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
+  static Future<Map<String, dynamic>> getUserByUsername(String username) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/users/check/$username'),
+      headers: _headers,
+    );
+    if (res.statusCode == 200) return jsonDecode(res.body);
+    return {};
+  }
+
   static Future<Map<String, dynamic>> createUser({
     required String firstName,
     required String lastName,
@@ -49,13 +58,53 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
+  static Future<void> updateUser({
+    required String userId,
+    required int challengeDuration,
+    String? startDate,
+  }) async {
+    final body = jsonEncode({
+      'userId': userId,
+      'challengeDuration': challengeDuration.toString(),
+      'startDate': startDate ?? DateTime.now().toIso8601String().split('T')[0],
+      'firstName': '',
+      'lastName': '',
+    });
+
+    var res = await http.put(
+      Uri.parse('$baseUrl/users/$userId'),
+      headers: _headers,
+      body: body,
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) return;
+
+    // Fallback route for older backend deployments.
+    res = await http.put(
+      Uri.parse('$baseUrl/users/update/$userId'),
+      headers: _headers,
+      body: body,
+    );
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('Failed to update user: ${res.statusCode}');
+    }
+  }
+
   // ─── PLAN ───────────────────────────────────
 
   static Future<Map<String, dynamic>> getPlan(String userId) async {
+    print('=== GET PLAN URL: $baseUrl/plans/$userId');
+    print('=== TOKEN: $_token');
+
     final res = await http.get(
       Uri.parse('$baseUrl/plans/$userId'),
       headers: _headers,
     );
+
+    print('=== PLAN STATUS CODE: ${res.statusCode}');
+    print('=== PLAN RESPONSE: ${res.body}');
+
     return jsonDecode(res.body);
   }
 
@@ -68,6 +117,24 @@ class ApiService {
       body: jsonEncode(payload),
     );
     return jsonDecode(res.body);
+  }
+
+  static Future<void> generateWeeklyPlan({
+    required String userId,
+    required int weekNumber,
+    required String previousLogs,
+    required String userProfile,
+  }) async {
+    await http.post(
+      Uri.parse('$baseUrl/plans/generate-weekly'),
+      headers: _headers,
+      body: jsonEncode({
+        'userId': userId,
+        'weekNumber': weekNumber,
+        'previousLogs': previousLogs,
+        'userProfile': userProfile,
+      }),
+    );
   }
 
   // ─── LOGS ───────────────────────────────────
@@ -88,18 +155,16 @@ class ApiService {
       Uri.parse('$baseUrl/logs/$userId/$date'),
       headers: _headers,
     );
-    return jsonDecode(res.body);
+    if (res.statusCode == 200) return jsonDecode(res.body);
+    return {};
   }
 
-  static Future<Map<String, dynamic>> saveLog(
-    Map<String, dynamic> payload,
-  ) async {
-    final res = await http.post(
+  static Future<void> saveLog(Map<String, dynamic> payload) async {
+    await http.post(
       Uri.parse('$baseUrl/logs/createLog'),
       headers: _headers,
       body: jsonEncode(payload),
     );
-    return jsonDecode(res.body);
   }
 
   static Future<Map<String, dynamic>> updateLog(

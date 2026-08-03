@@ -7,26 +7,36 @@ class PlanProvider extends ChangeNotifier {
   Map<String, dynamic>? training;
   bool isLoading = false;
   String status = '';
+  int weekNumber = 1;
 
-  bool get hasplan => plan != null && status == 'READY';
+  bool get hasPlan => plan != null && status == 'READY';
 
   Future<void> loadPlan(String userId) async {
     isLoading = true;
     notifyListeners();
 
     try {
+      print('=== LOADING PLAN FOR: $userId');
       final data = await ApiService.getPlan(userId);
+      print('=== PLAN DATA: $data');
       status = data['status']?.toString() ?? '';
       plan = data;
+      weekNumber = int.tryParse(data['weekNumber']?.toString() ?? '1') ?? 1;
 
       try {
         var raw = data['training'];
+        print('=== TRAINING RAW: $raw');
         if (raw != null && raw.toString().trim().isNotEmpty) {
           raw = raw.toString().replaceAll(RegExp(r'^"|"$'), '');
           training = Map<String, dynamic>.from(jsonDecode(raw));
+          print('=== TRAINING PARSED: ${training?.keys.toList()}');
         }
-      } catch (_) {}
-    } catch (_) {}
+      } catch (e) {
+        print('=== TRAINING PARSE ERROR: $e');
+      }
+    } catch (e) {
+      print('=== PLAN LOAD ERROR: $e');
+    }
 
     isLoading = false;
     notifyListeners();
@@ -37,54 +47,65 @@ class PlanProvider extends ChangeNotifier {
     status = 'GENERATING';
     notifyListeners();
 
-    print('=== GENERATING PLAN for userId: ${payload['userId']}');
-
     try {
-      final response = await ApiService.generatePlan(payload);
-      print('=== PLAN GENERATE RESPONSE: $response');
+      await ApiService.generatePlan(payload);
       await _pollForPlan(payload['userId']);
-    } catch (e) {
-      print('=== PLAN GENERATE ERROR: $e');
+    } catch (_) {
       await _pollForPlan(payload['userId']);
     }
   }
 
+  Future<void> generateWeeklyPlan({
+    required String userId,
+    required int week,
+    required String previousLogs,
+  }) async {
+    isLoading = true;
+    status = 'GENERATING';
+    notifyListeners();
+
+    try {
+      await ApiService.generateWeeklyPlan(
+        userId: userId,
+        weekNumber: week,
+        previousLogs: previousLogs,
+        userProfile: '',
+      );
+      await _pollForPlan(userId);
+    } catch (e) {
+      print('Weekly plan error: $e');
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> _pollForPlan(String userId) async {
-    print('=== POLLING FOR PLAN userId: $userId');
     for (int i = 0; i < 20; i++) {
       await Future.delayed(const Duration(seconds: 5));
       try {
         final data = await ApiService.getPlan(userId);
-        print(
-          '=== POLL $i status: ${data['status']} strategy length: ${data['strategy']?.toString().length}',
-        );
         final s = data['status']?.toString() ?? '';
         if (s == 'READY' &&
             data['strategy'] != null &&
             data['strategy'].toString().trim().length > 5) {
           plan = data;
           status = 'READY';
+          weekNumber = int.tryParse(data['weekNumber']?.toString() ?? '1') ?? 1;
           try {
             var raw = data['training'];
             if (raw != null && raw.toString().trim().isNotEmpty) {
               raw = raw.toString().replaceAll(RegExp(r'^"|"$'), '');
               training = Map<String, dynamic>.from(jsonDecode(raw));
             }
-          } catch (e) {
-            print('=== TRAINING PARSE ERROR: $e');
-          }
+          } catch (_) {}
           isLoading = false;
           notifyListeners();
-          print('=== PLAN READY ✅');
           return;
         }
-      } catch (e) {
-        print('=== POLL ERROR: $e');
-      }
+      } catch (_) {}
     }
     isLoading = false;
     status = 'FAILED';
     notifyListeners();
-    print('=== PLAN POLLING TIMED OUT');
   }
 }

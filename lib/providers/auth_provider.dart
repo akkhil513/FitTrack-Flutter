@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import '../services/api_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   String? userId;
@@ -11,13 +10,19 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isLoggedIn => userId != null;
 
-  Future<void> signIn({required String email, required String password}) async {
+  Future<void> signIn({
+    required String emailOrUsername,
+    required String password,
+  }) async {
     isLoading = true;
     error = '';
     notifyListeners();
 
     try {
-      await AuthService.signIn(email: email, password: password);
+      await AuthService.signIn(
+        emailOrUsername: emailOrUsername,
+        password: password,
+      );
       userId = AuthService.userId;
       userName = AuthService.userName;
       userEmail = AuthService.userEmail;

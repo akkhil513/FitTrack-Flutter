@@ -13,9 +13,21 @@ class AuthService {
   static String? idToken;
 
   static Future<void> signIn({
-    required String email,
+    required String emailOrUsername,
     required String password,
   }) async {
+    String email = emailOrUsername;
+
+    // If not an email - look up by username
+    if (!emailOrUsername.contains('@')) {
+      try {
+        final result = await ApiService.getUserByUsername(emailOrUsername);
+        email = result['email'] ?? emailOrUsername;
+      } catch (_) {
+        // Try as-is if lookup fails
+      }
+    }
+
     final res = await http.post(
       Uri.parse(_cognitoUrl),
       headers: {

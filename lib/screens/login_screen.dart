@@ -33,7 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final planProvider = context.read<PlanProvider>();
 
     await auth.signIn(
-      email: _emailController.text.trim(),
+      emailOrUsername: _emailController.text.trim(),
       password: _passwordController.text,
     );
 
@@ -178,9 +178,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'EMAIL',
-                          style: TextStyle(
-                            color: foregroundMuted,
+                          'EMAIL OR USERNAME',
+                          style: const TextStyle(
+                            color: Color(0xFF555555),
                             fontSize: 11,
                             letterSpacing: 2,
                           ),
@@ -189,8 +189,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
-                          style: TextStyle(color: theme.textPrimary),
-                          decoration: fitTrackInput('you@example.com', theme),
+                          style: const TextStyle(color: Colors.white),
+                          decoration: fitTrackInput('email or username', theme),
                         ),
                         const SizedBox(height: 16),
                         Text(

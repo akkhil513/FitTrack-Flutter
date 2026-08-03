@@ -87,7 +87,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       // Sign in
       await AuthService.signIn(
-        email: _emailController.text.trim(),
+        emailOrUsername: _emailController.text.trim(),
         password: _passwordController.text,
       );
 

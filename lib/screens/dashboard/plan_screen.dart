@@ -8,14 +8,14 @@ class PlanScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final plan = context.watch<PlanProvider>();
+    final planProvider = context.watch<PlanProvider>();
     final theme = context.watch<ThemeProvider>();
 
-    if (plan.isLoading) {
+    if (planProvider.isLoading) {
       return Center(child: CircularProgressIndicator(color: theme.accent));
     }
 
-    if (!plan.hasplan) {
+    if (!planProvider.hasPlan) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -43,15 +43,72 @@ class PlanScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Strategy
-          if (plan.plan!['strategy'] != null) ...[
+          if (planProvider.plan!['strategy'] != null) ...[
             _PlanCard(
               emoji: '🎯',
               title: 'STRATEGY',
               color: theme.accent,
-              content: plan.plan!['strategy'].toString(),
+              content: planProvider.plan!['strategy'].toString(),
             ),
             const SizedBox(height: 12),
           ],
+
+          // Week indicator
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: theme.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: theme.border),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'WEEK ${planProvider.weekNumber}',
+                      style: TextStyle(
+                        color: theme.accent,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    Text(
+                      'AI-generated based on your profile',
+                      style: TextStyle(
+                        color: theme.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.accent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'AUTO-UPDATES\nEVERY MONDAY',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: theme.accent,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
 
           // Training
           Text(
@@ -67,7 +124,7 @@ class PlanScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          if (plan.training != null) ...[
+          if (planProvider.training != null) ...[
             ...[
               'Monday',
               'Tuesday',
@@ -77,7 +134,7 @@ class PlanScreen extends StatelessWidget {
               'Saturday',
               'Sunday',
             ].map((day) {
-              final dayData = plan.training![day];
+              final dayData = planProvider.training![day];
               if (dayData == null) return const SizedBox.shrink();
               final session = dayData['session']?.toString() ?? day;
               final exercises = (dayData['exercises'] as List? ?? []);
@@ -102,36 +159,36 @@ class PlanScreen extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Supplements
-          if (plan.plan!['supplements'] != null) ...[
+          if (planProvider.plan!['supplements'] != null) ...[
             _PlanCard(
               emoji: '💊',
               title: 'SUPPLEMENTS',
               color: theme.orange,
-              content: plan.plan!['supplements'].toString(),
+              content: planProvider.plan!['supplements'].toString(),
               asBullets: true,
             ),
             const SizedBox(height: 12),
           ],
 
           // Nutrition
-          if (plan.plan!['nutrition'] != null) ...[
+          if (planProvider.plan!['nutrition'] != null) ...[
             _PlanCard(
               emoji: '🥩',
               title: 'NUTRITION',
               color: theme.green,
-              content: plan.plan!['nutrition'].toString(),
+              content: planProvider.plan!['nutrition'].toString(),
               asBullets: true,
             ),
             const SizedBox(height: 12),
           ],
 
           // Recovery
-          if (plan.plan!['recovery'] != null) ...[
+          if (planProvider.plan!['recovery'] != null) ...[
             _PlanCard(
               emoji: '😴',
               title: 'RECOVERY',
               color: theme.purple,
-              content: plan.plan!['recovery'].toString(),
+              content: planProvider.plan!['recovery'].toString(),
               asBullets: true,
             ),
           ],

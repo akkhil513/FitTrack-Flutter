@@ -16,26 +16,22 @@ class PlanProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      print('=== LOADING PLAN FOR: $userId');
       final data = await ApiService.getPlan(userId);
-      print('=== PLAN DATA: $data');
       status = data['status']?.toString() ?? '';
       plan = data;
       weekNumber = int.tryParse(data['weekNumber']?.toString() ?? '1') ?? 1;
 
       try {
         var raw = data['training'];
-        print('=== TRAINING RAW: $raw');
         if (raw != null && raw.toString().trim().isNotEmpty) {
           raw = raw.toString().replaceAll(RegExp(r'^"|"$'), '');
           training = Map<String, dynamic>.from(jsonDecode(raw));
-          print('=== TRAINING PARSED: ${training?.keys.toList()}');
         }
-      } catch (e) {
-        print('=== TRAINING PARSE ERROR: $e');
-      }
-    } catch (e) {
-      print('=== PLAN LOAD ERROR: $e');
+      } catch (_) {
+      // Keep the last known state; the UI shows its empty state.
+    }
+    } catch (_) {
+      // Keep the last known state; the UI shows its empty state.
     }
 
     isLoading = false;
@@ -73,7 +69,6 @@ class PlanProvider extends ChangeNotifier {
       );
       await _pollForPlan(userId);
     } catch (e) {
-      print('Weekly plan error: $e');
       isLoading = false;
       notifyListeners();
     }
@@ -97,12 +92,16 @@ class PlanProvider extends ChangeNotifier {
               raw = raw.toString().replaceAll(RegExp(r'^"|"$'), '');
               training = Map<String, dynamic>.from(jsonDecode(raw));
             }
-          } catch (_) {}
+          } catch (_) {
+      // Keep the last known state; the UI shows its empty state.
+    }
           isLoading = false;
           notifyListeners();
           return;
         }
-      } catch (_) {}
+      } catch (_) {
+      // Keep the last known state; the UI shows its empty state.
+    }
     }
     isLoading = false;
     status = 'FAILED';

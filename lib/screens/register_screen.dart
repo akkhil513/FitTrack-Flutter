@@ -6,7 +6,8 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import 'onboarding_screen.dart';
 import '../providers/theme_provider.dart';
-import '../widgets/app_background.dart';
+import '../theme/tokens.dart';
+import '../widgets/ui.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -37,7 +38,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (_nameController.text.isEmpty ||
         _emailController.text.isEmpty ||
         _passwordController.text.isEmpty) {
-      setState(() => _error = 'Please fill in all fields');
+      setState(() => _error = 'Fill in all fields');
       return;
     }
     if (_passwordController.text.length < 8) {
@@ -55,12 +56,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _passwordController.text,
         name: _nameController.text.trim(),
       );
-      // Show OTP screen
+      if (!mounted) return;
       setState(() {
         _loading = false;
         _step = 'verify';
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _loading = false;
         _error = e.toString().replaceAll('Exception: ', '');
@@ -70,7 +72,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _verify() async {
     if (_codeController.text.isEmpty) {
-      setState(() => _error = 'Enter verification code');
+      setState(() => _error = 'Enter the verification code');
       return;
     }
     setState(() {
@@ -105,8 +107,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // Update providers
       if (mounted) {
         await context.read<UserProvider>().loadUser(AuthService.userId!);
+        if (!mounted) return;
 
-        // Go to onboarding — NOT dashboard
+        // Go to onboarding, not the dashboard
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const OnboardingScreen()),
@@ -114,6 +117,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _loading = false;
         _error = e.toString().replaceAll('Exception: ', '');
@@ -126,22 +130,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final theme = context.watch<ThemeProvider>();
 
     return Scaffold(
-      body: AppBackground(
-        theme: theme,
-        motifs: const [
-          Icons.emoji_people,
-          Icons.directions_bike,
-          Icons.fitness_center,
-        ],
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: _step == 'register'
-                ? _buildRegisterForm(theme)
-                : _buildVerifyForm(theme),
-          ),
+      backgroundColor: theme.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(Sp.x4, Sp.x2, Sp.x6, Sp.x6),
+          child: _step == 'register'
+              ? _buildRegisterForm(theme)
+              : _buildVerifyForm(theme),
         ),
       ),
+    );
+  }
+
+  Widget _back(ThemeProvider theme, VoidCallback onTap) {
+    return IconButton(
+      tooltip: 'Back',
+      onPressed: onTap,
+      icon: Icon(Icons.arrow_back, size: 20, color: theme.textSecondary),
+    );
+  }
+
+  Widget _header(ThemeProvider theme, String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.only(left: Sp.x2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: Sp.x8),
+          Text(title, style: ftText(theme, size: 28, weight: FontWeight.w600)),
+          const SizedBox(height: Sp.x2),
+          Text(subtitle, style: ftText(theme, size: 14, color: theme.textSecondary)),
+          const SizedBox(height: Sp.x8),
+        ],
+      ),
+    );
+  }
+
+  Widget _errorText(ThemeProvider theme) {
+    if (_error.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: Sp.x3),
+      child: Text(_error, style: ftText(theme, size: 13, color: theme.negative)),
     );
   }
 
@@ -149,140 +178,73 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Icon(
-            Icons.arrow_back_ios,
-            color: theme.textSecondary,
-            size: 20,
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          'FITTRACK',
-          style: TextStyle(color: theme.accent, fontSize: 14, letterSpacing: 4),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'JOIN THE\nCHALLENGE',
-          style: TextStyle(
-            color: theme.textPrimary,
-            fontSize: 42,
-            fontWeight: FontWeight.bold,
-            height: 1.1,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Create your free account',
-          style: TextStyle(color: theme.textSecondary, fontSize: 14),
-        ),
-        const SizedBox(height: 32),
-
-        Text(
-          'FULL NAME',
-          style: TextStyle(
-            color: theme.textSecondary,
-            fontSize: 11,
-            letterSpacing: 2,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _nameController,
-          style: TextStyle(color: theme.textPrimary),
-          decoration: fitTrackInput('Alex Johnson', theme),
-        ),
-        const SizedBox(height: 16),
-
-        Text(
-          'EMAIL',
-          style: TextStyle(
-            color: theme.textSecondary,
-            fontSize: 11,
-            letterSpacing: 2,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _emailController,
-          keyboardType: TextInputType.emailAddress,
-          style: TextStyle(color: theme.textPrimary),
-          decoration: fitTrackInput('you@example.com', theme),
-        ),
-        const SizedBox(height: 16),
-
-        Text(
-          'PASSWORD',
-          style: TextStyle(
-            color: theme.textSecondary,
-            fontSize: 11,
-            letterSpacing: 2,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _passwordController,
-          obscureText: true,
-          style: TextStyle(color: theme.textPrimary),
-          decoration: fitTrackInput(
-            'Min 8 chars, 1 uppercase, 1 number',
-            theme,
-          ),
-        ),
-
-        if (_error.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Text(_error, style: const TextStyle(color: Colors.red, fontSize: 13)),
-        ],
-
-        const SizedBox(height: 32),
-
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton(
-            onPressed: _loading ? null : _register,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: theme.accent,
-              foregroundColor: theme.accentText,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+        _back(theme, () => Navigator.pop(context)),
+        _header(theme, 'Create account', 'Next, you will set up your plan.'),
+        Padding(
+          padding: const EdgeInsets.only(left: Sp.x2),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const FtLabel('Full name'),
+              TextField(
+                controller: _nameController,
+                textCapitalization: TextCapitalization.words,
+                style: ftText(theme, size: 15),
+                decoration: fitTrackInput('Alex Johnson', theme),
               ),
-            ),
-            child: _loading
-                ? CircularProgressIndicator(color: theme.accentText)
-                : Text(
-                    'CREATE ACCOUNT →',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
+              const SizedBox(height: Sp.x4),
+              const FtLabel('Email'),
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                style: ftText(theme, size: 15),
+                decoration: fitTrackInput('you@example.com', theme),
+              ),
+              const SizedBox(height: Sp.x4),
+              const FtLabel('Password'),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                style: ftText(theme, size: 15),
+                decoration: fitTrackInput('8+ characters, 1 uppercase, 1 number', theme),
+              ),
+              _errorText(theme),
+              const SizedBox(height: Sp.x8),
+              FtButton(
+                label: 'Create account',
+                loading: _loading,
+                onPressed: _loading ? null : _register,
+              ),
+              const SizedBox(height: Sp.x5),
+              Center(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.pop(context),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: Sp.x2),
+                    child: Text.rich(
+                      TextSpan(
+                        text: 'Have an account? ',
+                        style: ftText(theme, size: 14, color: theme.textSecondary),
+                        children: [
+                          TextSpan(
+                            text: 'Sign in',
+                            style: ftText(
+                              theme,
+                              size: 14,
+                              weight: FontWeight.w500,
+                              color: theme.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Already have an account? ',
-              style: TextStyle(color: theme.textSecondary, fontSize: 14),
-            ),
-            GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Text(
-                'Sign in',
-                style: TextStyle(
-                  color: theme.accent,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -292,86 +254,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        GestureDetector(
-          onTap: () => setState(() => _step = 'register'),
-          child: Icon(
-            Icons.arrow_back_ios,
-            color: theme.textSecondary,
-            size: 20,
-          ),
+        _back(theme, () => setState(() => _step = 'register')),
+        _header(
+          theme,
+          'Check your email',
+          'We sent a 6-digit code to ${_emailController.text}.',
         ),
-        const SizedBox(height: 24),
-        Text(
-          'FITTRACK',
-          style: TextStyle(color: theme.accent, fontSize: 14, letterSpacing: 4),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'CHECK YOUR\nEMAIL',
-          style: TextStyle(
-            color: theme.textPrimary,
-            fontSize: 42,
-            fontWeight: FontWeight.bold,
-            height: 1.1,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'We sent a 6-digit code to ${_emailController.text}',
-          style: TextStyle(color: theme.textSecondary, fontSize: 14),
-        ),
-        const SizedBox(height: 32),
-
-        Text(
-          'VERIFICATION CODE',
-          style: TextStyle(
-            color: theme.textSecondary,
-            fontSize: 11,
-            letterSpacing: 2,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _codeController,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          style: TextStyle(
-            color: theme.textPrimary,
-            fontSize: 28,
-            letterSpacing: 12,
-          ),
-          decoration: fitTrackInput('123456', theme).copyWith(counterText: ''),
-        ),
-
-        if (_error.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Text(_error, style: const TextStyle(color: Colors.red, fontSize: 13)),
-        ],
-
-        const SizedBox(height: 32),
-
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton(
-            onPressed: _loading ? null : _verify,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: theme.accent,
-              foregroundColor: theme.accentText,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+        Padding(
+          padding: const EdgeInsets.only(left: Sp.x2),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const FtLabel('Verification code'),
+              TextField(
+                controller: _codeController,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                style: ftText(theme, size: 24, weight: FontWeight.w500, tabular: true)
+                    .copyWith(letterSpacing: 8),
+                decoration: fitTrackInput('123456', theme).copyWith(counterText: ''),
               ),
-            ),
-            child: _loading
-                ? CircularProgressIndicator(color: theme.accentText)
-                : Text(
-                    'VERIFY & CONTINUE →',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
+              _errorText(theme),
+              const SizedBox(height: Sp.x8),
+              FtButton(
+                label: 'Verify and continue',
+                loading: _loading,
+                onPressed: _loading ? null : _verify,
+              ),
+            ],
           ),
         ),
       ],

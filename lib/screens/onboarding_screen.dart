@@ -5,6 +5,9 @@ import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../theme/tokens.dart';
+import '../widgets/input_decoration.dart';
+import '../widgets/ui.dart';
 import 'dashboard/dashboard_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -57,7 +60,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String _daysPerWeek = '4';
   String _sessionDuration = '60 minutes';
   String _preferredTime = 'Evening';
-  List<String> _focusAreas = [];
+  final List<String> _focusAreas = [];
 
   // Step 6 — Nutrition + Supplements
   String _dietType = '';
@@ -65,7 +68,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   bool _usesProtein = false;
   String _proteinType = '';
   bool _wantsRecommendation = false;
-  List<String> _currentSupplements = [];
+  final List<String> _currentSupplements = [];
 
   String _error = '';
 
@@ -113,12 +116,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _back() {
-    if (_step > 1)
+    if (_step > 1) {
       setState(() {
         _step--;
         _error = '';
       });
-    _scrollToTop();
+      _scrollToTop();
+    }
   }
 
   bool _validateStep() {
@@ -127,27 +131,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         return true;
       case 2:
         if (_gender.isEmpty) {
-          setState(() => _error = 'Please select your gender');
+          setState(() => _error = 'Select your gender');
           return false;
         }
       case 3:
         if (_ageController.text.isEmpty || _weightController.text.isEmpty) {
-          setState(() => _error = 'Please fill in age and weight');
+          setState(() => _error = 'Enter your age and weight');
           return false;
         }
       case 4:
         if (_primaryGoal.isEmpty || _bulkApproach.isEmpty) {
-          setState(() => _error = 'Please select your goal and approach');
+          setState(() => _error = 'Select your goal and approach');
           return false;
         }
       case 5:
         if (_trainingLevel.isEmpty || _gymAccess.isEmpty) {
-          setState(() => _error = 'Please fill in your training details');
+          setState(() => _error = 'Select your experience level and gym access');
           return false;
         }
       case 6:
         if (_dietType.isEmpty) {
-          setState(() => _error = 'Please select your diet type');
+          setState(() => _error = 'Select your diet type');
           return false;
         }
     }
@@ -163,12 +167,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
 
     try {
+      final u = context.read<UserProvider>();
       await ApiService.updateUser(
         userId: AuthService.userId!,
         challengeDuration: _challengeDuration,
+        firstName: u.firstName,
+        lastName: u.lastName,
       );
     } catch (e) {
-      debugPrint('updateUser failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not save your challenge length. Set it in Profile.'),
+          ),
+        );
+      }
     }
 
     final payload = {
@@ -238,41 +251,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget _buildGenerating(ThemeProvider theme) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(Sp.x8),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('🤖', style: TextStyle(fontSize: 64)),
-            const SizedBox(height: 24),
+            const FtLoader(),
+            const SizedBox(height: Sp.x6),
             Text(
-              'BUILDING YOUR PLAN',
-              style: TextStyle(
-                color: theme.accent,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 2,
-              ),
+              'Building your plan',
+              style: ftText(theme, size: 20, weight: FontWeight.w600),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: Sp.x2),
             Text(
-              'AI is analyzing your profile...',
-              style: TextStyle(color: theme.textSecondary, fontSize: 14),
+              '$_challengeDuration days  ·  $_primaryGoal',
+              textAlign: TextAlign.center,
+              style: ftText(theme, size: 14, color: theme.textSecondary),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: Sp.x4),
             Text(
-              '$_challengeDuration-day $_primaryGoal plan',
-              style: TextStyle(
-                color: theme.accent,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 40),
-            CircularProgressIndicator(color: theme.accent),
-            const SizedBox(height: 24),
-            Text(
-              'This takes about 30-60 seconds',
-              style: TextStyle(color: theme.textSecondary, fontSize: 12),
+              'This usually takes under a minute.',
+              style: ftText(theme, size: 13, color: theme.textTertiary),
             ),
           ],
         ),
@@ -282,52 +280,85 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   // ── STEPS WRAPPER ────────────────────────────────────────
   Widget _buildSteps(ThemeProvider theme) {
+    final Widget stepBody;
+    switch (_step) {
+      case 1:
+        stepBody = _buildChallenge(theme);
+      case 2:
+        stepBody = _buildGender(theme);
+      case 3:
+        stepBody = _buildBodyStats(theme);
+      case 4:
+        stepBody = _buildGoals(theme);
+      case 5:
+        stepBody = _buildTraining(theme);
+      default:
+        stepBody = _buildNutrition(theme);
+    }
+
     return Column(
       children: [
-        LinearProgressIndicator(
-          value: _step / _totalSteps,
-          backgroundColor: theme.border,
-          valueColor: AlwaysStoppedAnimation(theme.accent),
-          minHeight: 4,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(Sp.x6, Sp.x4, Sp.x6, 0),
+          child: Row(
+            children: [
+              for (var i = 1; i <= _totalSteps; i++) ...[
+                if (i > 1) const SizedBox(width: Sp.x1),
+                Expanded(
+                  child: AnimatedContainer(
+                    duration: Motion.base,
+                    curve: Motion.ease,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: i <= _step ? theme.accent : theme.surface2,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
         Expanded(
           child: SingleChildScrollView(
             controller: _scrollController,
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(Sp.x6),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 8),
                 Text(
-                  'STEP $_step OF $_totalSteps',
-                  style: TextStyle(
-                    color: theme.accent,
-                    fontSize: 11,
-                    letterSpacing: 2,
-                    fontWeight: FontWeight.bold,
+                  'Step $_step of $_totalSteps',
+                  style: ftText(
+                    theme,
+                    size: 13,
+                    color: theme.textTertiary,
+                    tabular: true,
                   ),
                 ),
-                const SizedBox(height: 16),
-                if (_step == 1) _buildChallenge(theme),
-                if (_step == 2) _buildGender(theme),
-                if (_step == 3) _buildBodyStats(theme),
-                if (_step == 4) _buildGoals(theme),
-                if (_step == 5) _buildTraining(theme),
-                if (_step == 6) _buildNutrition(theme),
+                const SizedBox(height: Sp.x3),
+                TweenAnimationBuilder<double>(
+                  key: ValueKey(_step),
+                  tween: Tween(begin: 0, end: 1),
+                  duration: Motion.base,
+                  curve: Motion.ease,
+                  builder: (context, v, child) =>
+                      Opacity(opacity: v, child: child),
+                  child: stepBody,
+                ),
                 if (_error.isNotEmpty) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: Sp.x4),
                   Text(
                     _error,
-                    style: const TextStyle(color: Colors.red, fontSize: 13),
+                    style: ftText(theme, size: 13, color: theme.negative),
                   ),
                 ],
-                const SizedBox(height: 24),
+                const SizedBox(height: Sp.x6),
               ],
             ),
           ),
         ),
         Container(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+          padding: const EdgeInsets.fromLTRB(Sp.x6, Sp.x3, Sp.x6, Sp.x4),
           decoration: BoxDecoration(
             color: theme.background,
             border: Border(top: BorderSide(color: theme.border)),
@@ -335,44 +366,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           child: Row(
             children: [
               Expanded(
-                child: OutlinedButton(
+                child: FtButton(
+                  label: 'Back',
+                  secondary: true,
                   onPressed: _step > 1 ? _back : null,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: BorderSide(color: theme.border),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    '← BACK',
-                    style: TextStyle(
-                      color: theme.textSecondary,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: Sp.x3),
               Expanded(
-                child: ElevatedButton(
+                flex: 2,
+                child: FtButton(
+                  label: _step == _totalSteps ? 'Generate plan' : 'Continue',
                   onPressed: _next,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.accent,
-                    foregroundColor: theme.accentText,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    _step == _totalSteps ? 'GENERATE MY PLAN 🔥' : 'NEXT →',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
                 ),
               ),
             ],
@@ -382,166 +387,106 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
+  Widget _title(ThemeProvider theme, String title, String subtitle) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: ftText(theme, size: 28, weight: FontWeight.w600)),
+        const SizedBox(height: Sp.x2),
+        Text(
+          subtitle,
+          style: ftText(theme, size: 14, color: theme.textSecondary),
+        ),
+        const SizedBox(height: Sp.x8),
+      ],
+    );
+  }
+
   // ── STEP 1: CHALLENGE SELECTION ──────────────────────────
   Widget _buildChallenge(ThemeProvider theme) {
-    final challenges = [
-      {
-        'days': 21,
-        'tag': 'QUICK RESET',
-        'title': '21-Day Jumpstart',
-        'desc': 'Maximum intensity. No sugar. Fast visible results.',
-        'icon': '⚡',
-        'color': Colors.orange,
-      },
-      {
-        'days': 45,
-        'tag': 'TRANSFORMATION',
-        'title': '45-Day Body Change',
-        'desc': 'Two phases. Fat loss then lean muscle. Real change.',
-        'icon': '🔥',
-        'color': Colors.red,
-      },
-      {
-        'days': 75,
-        'tag': 'SERIOUS COMMIT',
-        'title': '75-Day Recomp',
-        'desc': 'Three phases. Lose fat. Build muscle. Get strong.',
-        'icon': '💪',
-        'color': Colors.blue,
-      },
-      {
-        'days': 100,
-        'tag': 'FULL CHALLENGE',
-        'title': '100-Day Transformation',
-        'desc': 'Complete periodized program. Elite level results.',
-        'icon': '🏆',
-        'color': Colors.green,
-      },
+    const challenges = [
+      (days: 21, title: 'Jumpstart', desc: 'High intensity over a short window. No added sugar.'),
+      (days: 45, title: 'Body change', desc: 'Two phases: fat loss first, then lean muscle.'),
+      (days: 75, title: 'Recomp', desc: 'Three phases: fat loss, muscle gain, strength.'),
+      (days: 100, title: 'Transformation', desc: 'The full periodized program.'),
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'CHOOSE YOUR\nCHALLENGE',
-          style: TextStyle(
-            color: theme.textPrimary,
-            fontSize: 34,
-            fontWeight: FontWeight.bold,
-            height: 1.1,
-          ),
+        _title(
+          theme,
+          'Choose your challenge',
+          'Pick the length that fits your life right now.',
         ),
-        const SizedBox(height: 8),
-        Text(
-          'Pick the commitment level that fits your life right now.',
-          style: TextStyle(color: theme.textSecondary, fontSize: 14),
-        ),
-        const SizedBox(height: 32),
-        ...challenges.map((c) {
-          final days = c['days'] as int;
-          final isSelected = _challengeDuration == days;
-          final color = c['color'] as Color;
-          return GestureDetector(
-            onTap: () => setState(() => _challengeDuration = days),
-            child: Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 14),
-              decoration: BoxDecoration(
-                color: isSelected ? color.withOpacity(0.08) : theme.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isSelected ? color : theme.border,
-                  width: isSelected ? 2 : 1,
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    // Icon + days circle
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? color.withOpacity(0.15)
-                            : theme.surface2,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            c['icon'] as String,
-                            style: const TextStyle(fontSize: 22),
+        for (final c in challenges)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Sp.x3),
+            child: FtCard(
+              selected: _challengeDuration == c.days,
+              onTap: () => setState(() => _challengeDuration = c.days),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 56,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${c.days}',
+                          style: ftText(
+                            theme,
+                            size: 28,
+                            weight: FontWeight.w600,
+                            tabular: true,
                           ),
-                          Text(
-                            '${c['days']}d',
-                            style: TextStyle(
-                              color: isSelected ? color : theme.textSecondary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        ),
+                        Text(
+                          'days',
+                          style: ftText(
+                            theme,
+                            size: 12,
+                            color: theme.textTertiary,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: color.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  c['tag'] as String,
-                                  style: TextStyle(
-                                    color: color,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                              ),
-                            ],
+                  ),
+                  const SizedBox(width: Sp.x3),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          c.title,
+                          style: ftText(
+                            theme,
+                            size: 15,
+                            weight: FontWeight.w500,
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            c['title'] as String,
-                            style: TextStyle(
-                              color: theme.textPrimary,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        ),
+                        const SizedBox(height: Sp.x1),
+                        Text(
+                          c.desc,
+                          style: ftText(
+                            theme,
+                            size: 13,
+                            color: theme.textSecondary,
                           ),
-                          const SizedBox(height: 3),
-                          Text(
-                            c['desc'] as String,
-                            style: TextStyle(
-                              color: theme.textSecondary,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    if (isSelected)
-                      Icon(Icons.check_circle, color: color, size: 22),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: Sp.x3),
+                  AnimatedOpacity(
+                    opacity: _challengeDuration == c.days ? 1 : 0,
+                    duration: Motion.fast,
+                    child: Icon(Icons.check, size: 16, color: theme.accent),
+                  ),
+                ],
               ),
             ),
-          );
-        }),
+          ),
       ],
     );
   }
@@ -551,34 +496,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'ABOUT YOU',
-          style: TextStyle(
-            color: theme.textPrimary,
-            fontSize: 34,
-            fontWeight: FontWeight.bold,
-          ),
+        _title(
+          theme,
+          'About you',
+          'This shapes the questions and your targets.',
         ),
-        const SizedBox(height: 8),
-        Text(
-          'This helps us personalize your plan and questions.',
-          style: TextStyle(color: theme.textSecondary, fontSize: 14),
-        ),
-        const SizedBox(height: 32),
-        _label('I AM A...', theme),
+        _label('Gender', theme),
         Row(
           children: [
-            _genderCard('Male', '👨', theme),
-            const SizedBox(width: 12),
-            _genderCard('Female', '👩', theme),
-            const SizedBox(width: 12),
-            _genderCard('Other', '🧑', theme),
+            _genderCard('Male', theme),
+            const SizedBox(width: Sp.x2),
+            _genderCard('Female', theme),
+            const SizedBox(width: Sp.x2),
+            _genderCard('Other', theme),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: Sp.x3),
         _manualField(
           controller: _genderController,
-          hint: 'Or type your gender manually',
+          hint: 'Or type your own',
           theme: theme,
           onChanged: (value) => setState(() => _gender = value.trim()),
         ),
@@ -586,38 +522,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _genderCard(String label, String emoji, ThemeProvider theme) {
-    final isSelected = _gender == label;
+  Widget _genderCard(String label, ThemeProvider theme) {
     return Expanded(
-      child: GestureDetector(
+      child: FtCard(
+        selected: _gender == label,
         onTap: () => setState(() {
           _gender = label;
           _genderController.text = label;
         }),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          decoration: BoxDecoration(
-            color: isSelected ? theme.accent.withOpacity(0.1) : theme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected ? theme.accent : theme.border,
-              width: isSelected ? 2 : 1,
-            ),
-          ),
-          child: Column(
-            children: [
-              Text(emoji, style: const TextStyle(fontSize: 32)),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? theme.accent : theme.textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
+        padding: const EdgeInsets.symmetric(vertical: Sp.x4),
+        child: Center(
+          child: Text(label, style: ftText(theme, size: 14, weight: FontWeight.w500)),
         ),
       ),
     );
@@ -629,37 +544,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'YOUR BODY',
-          style: TextStyle(
-            color: theme.textPrimary,
-            fontSize: 34,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'We use this to calculate your exact calorie and protein targets.',
-          style: TextStyle(color: theme.textSecondary, fontSize: 14),
-        ),
-        const SizedBox(height: 28),
-
-        _label('AGE', theme),
-        _textField(
-          _ageController,
-          'e.g. 26',
+        _title(
           theme,
-          keyboardType: TextInputType.number,
+          'Your body',
+          'Used to calculate your calorie and protein targets.',
         ),
-        const SizedBox(height: 16),
-
+        _label('Age', theme),
+        _textField(_ageController, 'e.g. 26', theme,
+            keyboardType: TextInputType.number),
+        const SizedBox(height: Sp.x4),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _label('HEIGHT', theme),
+                  _label('Height', theme),
                   _textField(
                     _heightController,
                     isFemale ? 'e.g. 5\'4"' : 'e.g. 5\'8"',
@@ -668,12 +569,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: Sp.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _label('WEIGHT (kg)', theme),
+                  _label('Weight (kg)', theme),
                   _textField(
                     _weightController,
                     isFemale ? 'e.g. 58' : 'e.g. 76',
@@ -685,9 +586,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: Sp.x6),
 
-        _label('YOUR CURRENT BODY TYPE', theme),
+        _label('Current body type', theme),
         _optionColumn(
           isFemale
               ? [
@@ -710,33 +611,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           }),
           theme,
         ),
-        const SizedBox(height: 10),
-        TextField(
+        const SizedBox(height: Sp.x1),
+        _manualField(
           controller: _physiqueController,
-          style: TextStyle(color: theme.textPrimary),
+          hint: 'Or type your own',
+          theme: theme,
           onChanged: (value) => setState(() => _physique = value.trim()),
-          decoration: InputDecoration(
-            hintText: 'Or type your body type manually',
-            hintStyle: TextStyle(color: theme.textSecondary),
-            filled: true,
-            fillColor: theme.surface2,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: theme.border),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: theme.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: theme.accent, width: 2),
-            ),
-          ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: Sp.x6),
 
-        _label('WHERE DO YOU STORE MOST FAT?', theme),
+        _label('Where you store most fat', theme),
         _optionRow(
           isFemale
               ? ['Belly', 'Hips & thighs', 'Arms', 'All over']
@@ -748,10 +632,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           }),
           theme,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: Sp.x3),
         _manualField(
           controller: _fatStorageController,
-          hint: 'Or type fat storage area manually',
+          hint: 'Or type your own',
           theme: theme,
           onChanged: (value) => setState(() => _fatStorage = value.trim()),
         ),
@@ -762,25 +646,33 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // ── STEP 4: GOALS (gender-aware) ─────────────────────────
   Widget _buildGoals(ThemeProvider theme) {
     final isFemale = _gender == 'Female';
+    final areas = isFemale
+        ? [
+            'Flat stomach',
+            'Toned arms',
+            'Lifted glutes',
+            'Lean legs',
+            'Defined back',
+            'Toned shoulders',
+          ]
+        : [
+            'Six pack / Core',
+            'Bigger arms',
+            'Broader shoulders',
+            'Bigger chest',
+            'Wider back (V-taper)',
+            'Bigger legs',
+          ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'YOUR GOALS',
-          style: TextStyle(
-            color: theme.textPrimary,
-            fontSize: 34,
-            fontWeight: FontWeight.bold,
-          ),
+        _title(
+          theme,
+          'Your goals',
+          'Your plan is built around these answers.',
         ),
-        const SizedBox(height: 8),
-        Text(
-          'Be honest — the AI builds your plan around this.',
-          style: TextStyle(color: theme.textSecondary, fontSize: 14),
-        ),
-        const SizedBox(height: 28),
-
-        _label('MAIN GOAL', theme),
+        _label('Main goal', theme),
         _optionColumn(
           isFemale
               ? [
@@ -804,33 +696,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           }),
           theme,
         ),
-        const SizedBox(height: 10),
-        TextField(
+        const SizedBox(height: Sp.x1),
+        _manualField(
           controller: _primaryGoalController,
-          style: TextStyle(color: theme.textPrimary),
+          hint: 'Or describe your goal',
+          theme: theme,
           onChanged: (value) => setState(() => _primaryGoal = value.trim()),
-          decoration: InputDecoration(
-            hintText: 'Or type your goal manually',
-            hintStyle: TextStyle(color: theme.textSecondary),
-            filled: true,
-            fillColor: theme.surface2,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: theme.border),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: theme.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: theme.accent, width: 2),
-            ),
-          ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: Sp.x6),
 
-        _label('APPROACH', theme),
+        _label('Approach', theme),
         _optionColumn(
           isFemale
               ? [
@@ -852,83 +727,38 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           }),
           theme,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: Sp.x1),
         _manualField(
           controller: _bulkApproachController,
-          hint: 'Or type your approach manually',
+          hint: 'Or describe your approach',
           theme: theme,
           onChanged: (value) => setState(() => _bulkApproach = value.trim()),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: Sp.x6),
 
         _label(
           isFemale
-              ? 'WHICH AREAS DO YOU WANT TO FOCUS ON?'
-              : 'VISUAL GOALS (select all that apply)',
+              ? 'Areas to focus on'
+              : 'Visual goals (select all that apply)',
           theme,
         ),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children:
-              (isFemale
-                      ? [
-                          'Flat stomach',
-                          'Toned arms',
-                          'Lifted glutes',
-                          'Lean legs',
-                          'Defined back',
-                          'Toned shoulders',
-                        ]
-                      : [
-                          'Six pack / Core',
-                          'Bigger arms',
-                          'Broader shoulders',
-                          'Bigger chest',
-                          'Wider back (V-taper)',
-                          'Bigger legs',
-                        ])
-                  .map((area) {
-                    final isSelected = _focusAreas.contains(area);
-                    return GestureDetector(
-                      onTap: () => setState(() {
-                        if (isSelected) {
-                          _focusAreas.remove(area);
-                        } else {
-                          _focusAreas.add(area);
-                        }
-                      }),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? theme.accent.withOpacity(0.15)
-                              : theme.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isSelected ? theme.accent : theme.border,
-                            width: isSelected ? 2 : 1,
-                          ),
-                        ),
-                        child: Text(
-                          area,
-                          style: TextStyle(
-                            color: isSelected
-                                ? theme.accent
-                                : theme.textPrimary,
-                            fontSize: 13,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        ),
-                      ),
-                    );
-                  })
-                  .toList(),
+          spacing: Sp.x2,
+          runSpacing: Sp.x2,
+          children: [
+            for (final area in areas)
+              FtChip(
+                label: area,
+                selected: _focusAreas.contains(area),
+                onTap: () => setState(() {
+                  if (_focusAreas.contains(area)) {
+                    _focusAreas.remove(area);
+                  } else {
+                    _focusAreas.add(area);
+                  }
+                }),
+              ),
+          ],
         ),
       ],
     );
@@ -940,22 +770,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'YOUR TRAINING',
-          style: TextStyle(
-            color: theme.textPrimary,
-            fontSize: 34,
-            fontWeight: FontWeight.bold,
-          ),
+        _title(
+          theme,
+          'Your training',
+          'Sets the structure and intensity of the program.',
         ),
-        const SizedBox(height: 8),
-        Text(
-          'This determines the structure and intensity of your program.',
-          style: TextStyle(color: theme.textSecondary, fontSize: 14),
-        ),
-        const SizedBox(height: 28),
-
-        _label('EXPERIENCE LEVEL', theme),
+        _label('Experience level', theme),
         _optionColumn(
           [
             'Complete beginner (never trained seriously)',
@@ -970,16 +790,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           }),
           theme,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: Sp.x1),
         _manualField(
           controller: _trainingLevelController,
-          hint: 'Or type your experience level manually',
+          hint: 'Or describe your experience',
           theme: theme,
           onChanged: (value) => setState(() => _trainingLevel = value.trim()),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: Sp.x6),
 
-        _label('GYM ACCESS', theme),
+        _label('Gym access', theme),
         _optionColumn(
           [
             'Full gym (barbells, dumbbells, cables, machines)',
@@ -994,16 +814,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           }),
           theme,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: Sp.x1),
         _manualField(
           controller: _gymAccessController,
-          hint: 'Or type your gym access manually',
+          hint: 'Or describe your setup',
           theme: theme,
           onChanged: (value) => setState(() => _gymAccess = value.trim()),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: Sp.x6),
 
-        _label('HOW MANY DAYS PER WEEK?', theme),
+        _label('Days per week', theme),
         _optionRow(
           ['3', '4', '5', '6'],
           _daysPerWeek,
@@ -1013,16 +833,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           }),
           theme,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: Sp.x3),
         _manualField(
           controller: _daysPerWeekController,
-          hint: 'Or type days per week manually',
+          hint: 'Or type your own',
           theme: theme,
           onChanged: (value) => setState(() => _daysPerWeek = value.trim()),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: Sp.x6),
 
-        _label('SESSION LENGTH', theme),
+        _label('Session length', theme),
         _optionRow(
           ['45 min', '60 min', '75 min', '90+ min'],
           _sessionDuration,
@@ -1032,16 +852,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           }),
           theme,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: Sp.x3),
         _manualField(
           controller: _sessionDurationController,
-          hint: 'Or type session length manually',
+          hint: 'Or type your own',
           theme: theme,
           onChanged: (value) => setState(() => _sessionDuration = value.trim()),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: Sp.x6),
 
-        _label('PREFERRED TRAINING TIME', theme),
+        _label('Preferred training time', theme),
         _optionRow(
           ['Early AM', 'Morning', 'Afternoon', 'Evening'],
           _preferredTime,
@@ -1051,17 +871,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           }),
           theme,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: Sp.x3),
         _manualField(
           controller: _preferredTimeController,
-          hint: 'Or type preferred training time manually',
+          hint: 'Or type your own',
           theme: theme,
           onChanged: (value) => setState(() => _preferredTime = value.trim()),
         ),
 
         if (isFemale) ...[
-          const SizedBox(height: 20),
-          _label('TRAINING EMPHASIS', theme),
+          const SizedBox(height: Sp.x6),
+          _label('Training emphasis', theme),
           _optionColumn(
             [
               'Full body balanced',
@@ -1076,10 +896,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             }),
             theme,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: Sp.x1),
           _manualField(
             controller: _secondaryGoalController,
-            hint: 'Or type your training emphasis manually',
+            hint: 'Or describe your emphasis',
             theme: theme,
             onChanged: (value) => setState(() => _secondaryGoal = value.trim()),
           ),
@@ -1090,7 +910,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   // ── STEP 6: NUTRITION + SUPPLEMENTS ─────────────────────
   Widget _buildNutrition(ThemeProvider theme) {
-    final supplements = [
+    const supplements = [
       'Whey Protein',
       'Creatine',
       'Fish Oil / Omega-3',
@@ -1105,23 +925,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'NUTRITION &\nSUPPLEMENTS',
-          style: TextStyle(
-            color: theme.textPrimary,
-            fontSize: 34,
-            fontWeight: FontWeight.bold,
-            height: 1.1,
-          ),
+        _title(
+          theme,
+          'Nutrition and supplements',
+          'Sets your calorie targets and supplement plan.',
         ),
-        const SizedBox(height: 8),
-        Text(
-          'This helps us set your calorie targets and supplement plan.',
-          style: TextStyle(color: theme.textSecondary, fontSize: 14),
-        ),
-        const SizedBox(height: 28),
-
-        _label('DIET TYPE', theme),
+        _label('Diet type', theme),
         _optionColumn(
           [
             'Non-vegetarian (eat everything)',
@@ -1136,16 +945,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           }),
           theme,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: Sp.x1),
         _manualField(
           controller: _dietTypeController,
-          hint: 'Or type your diet type manually',
+          hint: 'Or describe your diet',
           theme: theme,
           onChanged: (value) => setState(() => _dietType = value.trim()),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: Sp.x6),
 
-        _label('HOW IS YOUR APPETITE?', theme),
+        _label('Appetite', theme),
         _optionColumn(
           [
             'Small — I struggle to eat enough',
@@ -1160,67 +969,44 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           }),
           theme,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: Sp.x1),
         _manualField(
           controller: _appetiteController,
-          hint: 'Or type your appetite manually',
+          hint: 'Or describe your appetite',
           theme: theme,
           onChanged: (value) => setState(() => _appetite = value.trim()),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: Sp.x6),
 
-        _label('SUPPLEMENTS YOU CURRENTLY TAKE', theme),
+        _label('Supplements you take now', theme),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: supplements.map((s) {
-            final isSelected = _currentSupplements.contains(s);
-            return GestureDetector(
-              onTap: () => setState(() {
-                if (s == 'None') {
-                  _currentSupplements.clear();
-                  _currentSupplements.add('None');
-                } else {
-                  _currentSupplements.remove('None');
-                  if (isSelected) {
-                    _currentSupplements.remove(s);
+          spacing: Sp.x2,
+          runSpacing: Sp.x2,
+          children: [
+            for (final s in supplements)
+              FtChip(
+                label: s,
+                selected: _currentSupplements.contains(s),
+                onTap: () => setState(() {
+                  if (s == 'None') {
+                    _currentSupplements
+                      ..clear()
+                      ..add('None');
                   } else {
-                    _currentSupplements.add(s);
+                    _currentSupplements.remove('None');
+                    if (_currentSupplements.contains(s)) {
+                      _currentSupplements.remove(s);
+                    } else {
+                      _currentSupplements.add(s);
+                    }
                   }
-                }
-              }),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? theme.accent.withOpacity(0.15)
-                      : theme.surface,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isSelected ? theme.accent : theme.border,
-                    width: isSelected ? 2 : 1,
-                  ),
-                ),
-                child: Text(
-                  s,
-                  style: TextStyle(
-                    color: isSelected ? theme.accent : theme.textPrimary,
-                    fontSize: 13,
-                    fontWeight: isSelected
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                  ),
-                ),
+                }),
               ),
-            );
-          }).toList(),
+          ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: Sp.x6),
 
-        _label('DO YOU USE PROTEIN POWDER?', theme),
+        _label('Do you use protein powder?', theme),
         _optionRow(
           ['Yes', 'No'],
           _usesProtein ? 'Yes' : 'No',
@@ -1229,8 +1015,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
 
         if (_usesProtein) ...[
-          const SizedBox(height: 16),
-          _label('WHICH TYPE?', theme),
+          const SizedBox(height: Sp.x6),
+          _label('Which type?', theme),
           _optionColumn(
             [
               'Whey Concentrate',
@@ -1246,17 +1032,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             }),
             theme,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: Sp.x1),
           _manualField(
             controller: _proteinTypeController,
-            hint: 'Or type your protein type manually',
+            hint: 'Or type your own',
             theme: theme,
             onChanged: (value) => setState(() => _proteinType = value.trim()),
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: Sp.x6),
 
-        _label('WANT A PROTEIN POWDER RECOMMENDATION?', theme),
+        _label('Want a protein powder recommendation?', theme),
         _optionRow(
           ['Yes', 'No'],
           _wantsRecommendation ? 'Yes' : 'No',
@@ -1269,20 +1055,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   // ── SHARED HELPERS ───────────────────────────────────────
 
-  Widget _label(String text, ThemeProvider theme) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: theme.textSecondary,
-          fontSize: 11,
-          letterSpacing: 1.5,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
+  Widget _label(String text, ThemeProvider theme) => FtLabel(text);
 
   Widget _textField(
     TextEditingController controller,
@@ -1293,25 +1066,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
-      style: TextStyle(color: theme.textPrimary),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: theme.textSecondary),
-        filled: true,
-        fillColor: theme.surface2,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: theme.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: theme.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: theme.accent, width: 2),
-        ),
-      ),
+      style: ftText(theme, size: 15),
+      decoration: fitTrackInput(hint, theme),
     );
   }
 
@@ -1323,26 +1079,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }) {
     return TextField(
       controller: controller,
-      style: TextStyle(color: theme.textPrimary),
+      style: ftText(theme, size: 15),
       onChanged: onChanged,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: theme.textSecondary),
-        filled: true,
-        fillColor: theme.surface2,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: theme.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: theme.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: theme.accent, width: 2),
-        ),
-      ),
+      decoration: fitTrackInput(hint, theme),
     );
   }
 
@@ -1353,35 +1092,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ThemeProvider theme,
   ) {
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: options.map((o) {
-        final isSelected = selected == o;
-        return GestureDetector(
-          onTap: () => onSelect(o),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? theme.accent.withOpacity(0.15)
-                  : theme.surface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isSelected ? theme.accent : theme.border,
-                width: isSelected ? 2 : 1,
-              ),
-            ),
-            child: Text(
-              o,
-              style: TextStyle(
-                color: isSelected ? theme.accent : theme.textPrimary,
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
+      spacing: Sp.x2,
+      runSpacing: Sp.x2,
+      children: [
+        for (final o in options)
+          FtChip(
+            label: o,
+            selected: selected == o,
+            onTap: () => onSelect(o),
           ),
-        );
-      }).toList(),
+      ],
     );
   }
 
@@ -1392,43 +1112,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ThemeProvider theme,
   ) {
     return Column(
-      children: options.map((o) {
-        final isSelected = selected == o;
-        return GestureDetector(
-          onTap: () => onSelect(o),
-          child: Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: isSelected ? theme.accent.withOpacity(0.1) : theme.surface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isSelected ? theme.accent : theme.border,
-                width: isSelected ? 2 : 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    o,
-                    style: TextStyle(
-                      color: isSelected ? theme.accent : theme.textPrimary,
-                      fontSize: 14,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
-                  ),
-                ),
-                if (isSelected)
-                  Icon(Icons.check_circle, color: theme.accent, size: 18),
-              ],
-            ),
+      children: [
+        for (final o in options)
+          FtChoice(
+            label: o,
+            selected: selected == o,
+            onTap: () => onSelect(o),
           ),
-        );
-      }).toList(),
+      ],
     );
   }
 }

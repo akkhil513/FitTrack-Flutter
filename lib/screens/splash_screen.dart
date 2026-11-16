@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../providers/plan_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/user_provider.dart';
+import '../theme/tokens.dart';
+import '../widgets/ui.dart';
+import 'dashboard/dashboard_screen.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -12,27 +18,54 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnim;
+  static const _ticks = 21;
+  late final AnimationController _controller;
+  late final Animation<double> _progress;
 
   @override
   void initState() {
     super.initState();
+    // One pass, no loop: the strip fills once, then we move on.
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1200),
     );
-    _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
+    _progress = CurvedAnimation(parent: _controller, curve: Motion.ease);
     _controller.forward();
 
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _boot());
+  }
+
+  /// Restore a saved session while the splash plays, then pick the first screen.
+  Future<void> _boot() async {
+    final started = DateTime.now();
+    final auth = context.read<AuthProvider>();
+    final user = context.read<UserProvider>();
+    final plan = context.read<PlanProvider>();
+
+    var restored = false;
+    try {
+      restored = await auth.restoreSession();
+      if (restored) {
+        await user.loadUser(auth.userId!);
+        await plan.loadPlan(auth.userId!);
       }
-    });
+    } catch (_) {
+      restored = false;
+    }
+
+    const minimum = Duration(milliseconds: 1800);
+    final elapsed = DateTime.now().difference(started);
+    if (elapsed < minimum) await Future.delayed(minimum - elapsed);
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            restored ? const DashboardScreen() : const LoginScreen(),
+      ),
+    );
   }
 
   @override
@@ -46,85 +79,36 @@ class _SplashScreenState extends State<SplashScreen>
     final theme = context.watch<ThemeProvider>();
 
     return Scaffold(
-      body: FadeTransition(
-        opacity: _fadeAnim,
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF0EA5E9), Color(0xFF06B6D4), Color(0xFF22C55E)],
+      backgroundColor: theme.background,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'FitTrack',
+              style: ftText(theme, size: 32, weight: FontWeight.w600),
             ),
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                top: -60,
-                right: -30,
-                child: Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: -40,
-                left: -20,
-                child: Container(
-                  width: 160,
-                  height: 160,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.14),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('💪', style: TextStyle(fontSize: 72)),
-                    const SizedBox(height: 16),
-                    Text(
-                      'FITTRACK',
-                      style: TextStyle(
-                        color: theme.isDark
-                            ? Colors.white
-                            : const Color(0xFF0F172A),
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 8,
-                      ),
+            const SizedBox(height: Sp.x5),
+            SizedBox(
+              width: 168,
+              height: 20,
+              child: AnimatedBuilder(
+                animation: _progress,
+                builder: (context, _) {
+                  final p = _progress.value;
+                  return CustomPaint(
+                    painter: TickStripPainter(
+                      total: _ticks,
+                      done: (p * _ticks).floor(),
+                      today: 0,
+                      accent: theme.accent,
+                      track: theme.textTertiary.withValues(alpha: 0.3),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '100 DAY CHALLENGE',
-                      style: TextStyle(
-                        color: theme.isDark
-                            ? Colors.white.withValues(alpha: 0.82)
-                            : const Color(0xFF0F172A).withValues(alpha: 0.75),
-                        fontSize: 12,
-                        letterSpacing: 4,
-                      ),
-                    ),
-                    const SizedBox(height: 48),
-                    SizedBox(
-                      width: 200,
-                      child: LinearProgressIndicator(
-                        backgroundColor: Colors.white.withValues(alpha: 0.24),
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Color(0xFFFDE047),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

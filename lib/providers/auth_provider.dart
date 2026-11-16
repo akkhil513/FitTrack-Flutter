@@ -74,6 +74,18 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Restores a previous session from the stored refresh token.
+  Future<bool> restoreSession() async {
+    final ok = await AuthService.refreshSession();
+    if (ok) {
+      userId = AuthService.userId;
+      userName = AuthService.userName;
+      userEmail = AuthService.userEmail;
+      notifyListeners();
+    }
+    return ok;
+  }
+
   void signOut() {
     AuthService.signOut();
     userId = null;

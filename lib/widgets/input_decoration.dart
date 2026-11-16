@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
 import '../providers/theme_provider.dart';
+import '../theme/tokens.dart';
 
 InputDecoration fitTrackInput(String hint, ThemeProvider theme) {
+  OutlineInputBorder outline(Color color) => OutlineInputBorder(
+    borderRadius: BorderRadius.circular(Rd.control),
+    borderSide: BorderSide(color: color),
+  );
   return InputDecoration(
     hintText: hint,
-    hintStyle: TextStyle(
-      color: theme.isDark ? const Color(0xFF333333) : const Color(0xFF999999),
-    ),
+    hintStyle: TextStyle(color: theme.textTertiary, fontSize: 15),
     filled: true,
     fillColor: theme.surface2,
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: theme.border),
+    isDense: true,
+    constraints: const BoxConstraints(minHeight: 48),
+    contentPadding: const EdgeInsets.symmetric(
+      horizontal: Sp.x4,
+      vertical: Sp.x3,
     ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: theme.border),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: theme.accent),
-    ),
+    border: outline(theme.border),
+    enabledBorder: outline(theme.border),
+    focusedBorder: outline(theme.accent),
   );
 }

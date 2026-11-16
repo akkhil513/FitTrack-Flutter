@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'api_service.dart';
 
@@ -11,6 +12,61 @@ class AuthService {
   static String? userEmail;
   static String? userName;
   static String? idToken;
+
+  static const _storage = FlutterSecureStorage();
+  static const _refreshKey = 'fittrack_refresh_token';
+
+  /// Wire the API client so an expired token is refreshed automatically.
+  static void init() {
+    ApiService.onUnauthorized = refreshSession;
+  }
+
+  static void _applyIdToken(String token) {
+    idToken = token;
+    final parts = token.split('.');
+    final payload = jsonDecode(
+      utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+    );
+    userId = payload['sub'];
+    userEmail = payload['email'];
+    userName = payload['name'];
+    ApiService.setToken(token);
+  }
+
+  /// Uses the stored refresh token to get a fresh ID token. Returns false when
+  /// there is no stored session or Cognito rejects it.
+  static Future<bool> refreshSession() async {
+    try {
+      final refresh = await _storage.read(key: _refreshKey);
+      if (refresh == null || refresh.isEmpty) return false;
+
+      final res = await http.post(
+        Uri.parse(_cognitoUrl),
+        headers: {
+          'Content-Type': 'application/x-amz-json-1.1',
+          'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth',
+        },
+        body: jsonEncode({
+          'AuthFlow': 'REFRESH_TOKEN_AUTH',
+          'ClientId': _clientId,
+          'AuthParameters': {'REFRESH_TOKEN': refresh},
+        }),
+      );
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        _applyIdToken(data['AuthenticationResult']['IdToken']);
+        return true;
+      }
+      // Refresh token revoked or expired: forget it.
+      if (res.statusCode == 400) {
+        await _storage.delete(key: _refreshKey);
+      }
+    } catch (_) {
+      // Offline or storage unavailable: keep the stored token, report no session.
+    }
+    return false;
+  }
 
   static Future<void> signIn({
     required String emailOrUsername,
@@ -44,15 +100,16 @@ class AuthService {
     final data = jsonDecode(res.body);
 
     if (res.statusCode == 200) {
-      idToken = data['AuthenticationResult']['IdToken'];
-      final parts = idToken!.split('.');
-      final payload = jsonDecode(
-        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
-      );
-      userId = payload['sub'];
-      userEmail = payload['email'];
-      userName = payload['name'];
-      ApiService.setToken(idToken!);
+      final result = data['AuthenticationResult'];
+      _applyIdToken(result['IdToken']);
+      final refresh = result['RefreshToken'];
+      if (refresh != null) {
+        try {
+          await _storage.write(key: _refreshKey, value: refresh);
+        } catch (_) {
+          // Sign-in still works for this session without persistence.
+        }
+      }
     } else {
       throw Exception(data['message'] ?? 'Login failed');
     }
@@ -114,6 +171,7 @@ class AuthService {
     userEmail = null;
     userName = null;
     idToken = null;
-    ApiService.setToken('');
+    ApiService.clearToken();
+    _storage.delete(key: _refreshKey);
   }
 }

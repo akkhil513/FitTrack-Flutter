@@ -5,8 +5,11 @@ import 'providers/user_provider.dart';
 import 'providers/plan_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/splash_screen.dart';
+import 'services/auth_service.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  AuthService.init();
   runApp(const FitTrackApp());
 }
 
@@ -27,13 +30,7 @@ class FitTrackApp extends StatelessWidget {
           return MaterialApp(
             title: 'FitTrack',
             debugShowCheckedModeBanner: false,
-            theme: ThemeData(
-              scaffoldBackgroundColor: theme.background,
-              colorScheme: theme.isDark
-                  ? ColorScheme.dark(primary: theme.accent)
-                  : ColorScheme.light(primary: theme.accent),
-              fontFamily: 'DM Sans',
-            ),
+            theme: theme.materialTheme,
             home: const SplashScreen(),
           );
         },

@@ -4,11 +4,13 @@ import '../../providers/auth_provider.dart';
 import '../../providers/plan_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/theme_provider.dart';
-import '../../widgets/app_background.dart';
+import '../../theme/tokens.dart';
+import '../../widgets/ui.dart';
 import '../login_screen.dart';
 import 'today_screen.dart';
 import 'plan_screen.dart';
 import 'log_screen.dart';
+import 'nutrition_screen.dart';
 import 'profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -21,216 +23,165 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = [
-    const TodayScreen(),
+  List<Widget> get _screens => [
+    TodayScreen(onStartWorkout: () => _onTab(2)),
     const PlanScreen(),
     const LogScreen(),
+    const NutritionScreen(),
     const ProfileScreen(),
   ];
 
+  static const _tabs = [
+    (icon: Icons.task_alt_outlined, label: 'Today'),
+    (icon: Icons.event_note_outlined, label: 'Plan'),
+    (icon: Icons.fitness_center_outlined, label: 'Log'),
+    (icon: Icons.restaurant_outlined, label: 'Nutrition'),
+    (icon: Icons.person_outline, label: 'Profile'),
+  ];
+
+  void _onTab(int i) {
+    setState(() => _currentIndex = i);
+
+    // Reload plan when the Plan tab is opened.
+    if (i == 1) {
+      final auth = context.read<AuthProvider>();
+      if (auth.userId != null) {
+        context.read<PlanProvider>().loadPlan(auth.userId!);
+      }
+    }
+
+    // Reload user when the Profile tab is opened.
+    if (i == 4) {
+      final auth = context.read<AuthProvider>();
+      if (auth.userId != null) {
+        context.read<UserProvider>().loadUser(auth.userId!);
+      }
+    }
+  }
+
+  void _signOut() {
+    context.read<AuthProvider>().signOut();
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
     final user = context.watch<UserProvider>();
     final theme = context.watch<ThemeProvider>();
 
     return Scaffold(
-      body: AppBackground(
-        theme: theme,
-        motifs: const [
-          Icons.fitness_center,
-          Icons.monitor_heart,
-          Icons.directions_run,
-        ],
+      backgroundColor: theme.background,
+      body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
-            SafeArea(
-              bottom: false,
-              child: Consumer<ThemeProvider>(
-                builder: (context, theme, _) {
-                  return Column(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(Sp.x5, Sp.x3, Sp.x2, Sp.x3),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      // Yellow top bar — stays same
-                      Container(
-                        color: theme.headerYellow,
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
+                      Expanded(
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
                           children: [
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      user.dayNumber == 0
-                                          ? 'DAY 0'
-                                          : 'DAY ${user.dayNumber} / ${user.challengeDuration}',
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Consumer<PlanProvider>(
-                                      builder: (context, plan, _) => Text(
-                                        'WK ${plan.weekNumber}',
-                                        style: const TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          letterSpacing: 1,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                            Text(
+                              'Day ${user.dayNumber}',
+                              style: ftText(
+                                theme,
+                                size: 28,
+                                weight: FontWeight.w600,
+                                tabular: true,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: Sp.x2),
                             Flexible(
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.centerRight,
-                                child: Text(
-                                  '${user.challengeDuration} DAY CHALLENGE',
-                                  style: TextStyle(
-                                    color: theme.headerText.withValues(
-                                      alpha: 0.7,
-                                    ),
-                                    fontSize: 10,
-                                    letterSpacing: 2,
-                                  ),
+                              child: Text(
+                                'of ${user.challengeDuration}'
+                                '  ·  Week ${user.calendarWeek}',
+                                overflow: TextOverflow.ellipsis,
+                                style: ftText(
+                                  theme,
+                                  size: 14,
+                                  color: theme.textTertiary,
+                                  tabular: true,
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      // Bottom bar — theme aware
-                      Container(
-                        color: theme.surface.withValues(alpha: 0.8),
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'HEY, ${user.firstName.toUpperCase()} 👋',
-                              style: TextStyle(
-                                color: theme.textPrimary,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                auth.signOut();
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const LoginScreen(),
-                                  ),
-                                  (route) => false,
-                                );
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: theme.border),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  'SIGN OUT',
-                                  style: TextStyle(
-                                    color: theme.textSecondary,
-                                    fontSize: 11,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                      IconButton(
+                        tooltip: 'Sign out',
+                        onPressed: _signOut,
+                        icon: Icon(
+                          Icons.logout,
+                          size: 20,
+                          color: theme.textSecondary,
                         ),
                       ),
                     ],
-                  );
-                },
+                  ),
+                ],
               ),
             ),
+            const FtDivider(),
             Expanded(child: _screens[_currentIndex]),
           ],
         ),
       ),
-      bottomNavigationBar: Consumer<ThemeProvider>(
-        builder: (context, theme, _) {
-          return BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (i) {
-              setState(() => _currentIndex = i);
-
-              // Reload plan when user taps Plan tab (index 1)
-              if (i == 1) {
-                final auth = context.read<AuthProvider>();
-                if (auth.userId != null) {
-                  context.read<PlanProvider>().loadPlan(auth.userId!);
-                }
-              }
-
-              // Reload user when user taps Profile tab (index 3)
-              if (i == 3) {
-                final auth = context.read<AuthProvider>();
-                if (auth.userId != null) {
-                  context.read<UserProvider>().loadUser(auth.userId!);
-                }
-              }
-            },
-            backgroundColor: theme.surface,
-            selectedItemColor: theme.accent,
-            unselectedItemColor: theme.textSecondary,
-            type: BottomNavigationBarType.fixed,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.check_circle_outline),
-                label: 'TODAY',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.calendar_today),
-                label: 'PLAN',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.fitness_center),
-                label: 'LOG',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline),
-                label: 'PROFILE',
-              ),
-            ],
-          );
-        },
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: theme.surface,
+          border: Border(top: BorderSide(color: theme.border)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 56,
+            child: Row(
+              children: [
+                for (var i = 0; i < _tabs.length; i++)
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _onTab(i),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _tabs[i].icon,
+                            size: 20,
+                            color: i == _currentIndex
+                                ? theme.accent
+                                : theme.textTertiary,
+                          ),
+                          const SizedBox(height: Sp.x1),
+                          Text(
+                            _tabs[i].label,
+                            style: ftText(
+                              theme,
+                              size: 11,
+                              weight: FontWeight.w500,
+                              color: i == _currentIndex
+                                  ? theme.textPrimary
+                                  : theme.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -6,8 +6,13 @@ import '../../providers/plan_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../services/api_service.dart';
+import '../../services/missed_day.dart';
 import '../../services/nutrition_targets.dart';
+import '../../services/exercise_library.dart';
 import '../../services/progress_stats.dart';
+import '../../services/schedule.dart';
+import '../../services/stretches.dart';
+import '../../widgets/exercise_demo.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/ui.dart';
 
@@ -30,11 +35,17 @@ class _TodayScreenState extends State<TodayScreen> {
   int _protein = 0;
   int _calories = 0;
   int _water = 0;
+  MissedDay? _missed;
+  List<dynamic> _logs = [];
+  bool _skipping = false;
 
   @override
   void initState() {
     super.initState();
     _todayKey = DateTime.now().toIso8601String().split('T')[0];
+    ExerciseLibrary.load().then((_) {
+      if (mounted) setState(() {});
+    }).catchError((_) {});
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
   }
 
@@ -58,7 +69,18 @@ class _TodayScreenState extends State<TodayScreen> {
       _water = n(log['water']);
       ApiService.getLogs(auth.userId!).then((logs) {
         if (mounted) {
-          setState(() => _stats = ProgressStats.fromLogs(logs, DateTime.now()));
+          final user = context.read<UserProvider>();
+          setState(() {
+            _logs = logs;
+            _stats = ProgressStats.fromLogs(logs, DateTime.now());
+            _missed = findMissedDay(
+              training: context.read<PlanProvider>().training,
+              logs: logs,
+              today: DateTime.now(),
+              challengeStart:
+                  user.startDate.isEmpty ? null : DateTime.tryParse(user.startDate),
+            );
+          });
         }
       });
       if (log['checklist'] != null &&
@@ -178,6 +200,29 @@ class _TodayScreenState extends State<TodayScreen> {
     _checked = checked;
   }
 
+  Future<void> _skipMissed() async {
+    final missed = _missed;
+    final userId = context.read<AuthProvider>().userId;
+    if (missed == null || userId == null || _skipping) return;
+    setState(() => _skipping = true);
+    try {
+      await ApiService.skipDay(
+        userId,
+        missed.date,
+        dayNumber: (context.read<UserProvider>().dayNumber - 1).clamp(0, 1000),
+      );
+      if (mounted) setState(() => _missed = null);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not skip that day. Try again.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _skipping = false);
+    }
+  }
+
   void _toggle(String id) async {
     setState(() => _checked[id] = !(_checked[id] ?? false));
     await _saveChecklist();
@@ -248,6 +293,43 @@ class _TodayScreenState extends State<TodayScreen> {
             ),
             const SizedBox(height: Sp.x3),
           ],
+          if (_missed != null) ...[
+            FtCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'You missed ${_missed!.dayName}\'s ${_missed!.session}',
+                    style: ftText(theme, size: 15, weight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: Sp.x1),
+                  Text(
+                    'Skip it so next week\'s plan does not wait on it, or just train today as planned.',
+                    style: ftText(theme, size: 13, color: theme.textSecondary, height: 1.4),
+                  ),
+                  const SizedBox(height: Sp.x3),
+                  Row(
+                    children: [
+                      FtButton(
+                        label: 'Skip it',
+                        compact: true,
+                        loading: _skipping,
+                        onPressed: _skipMissed,
+                      ),
+                      const SizedBox(width: Sp.x2),
+                      FtButton(
+                        label: 'Dismiss',
+                        secondary: true,
+                        compact: true,
+                        onPressed: () => setState(() => _missed = null),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: Sp.x3),
+          ],
           ..._hero(theme),
           FtCard(
             child: Column(
@@ -295,21 +377,32 @@ class _TodayScreenState extends State<TodayScreen> {
     );
   }
 
-  static const _dayNames = [
-    'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
-  ];
-
   List<Widget> _hero(ThemeProvider theme) {
     final plan = context.watch<PlanProvider>();
-    final day = plan.training?[_dayNames[DateTime.now().weekday % 7]];
-    final isRest = day?['isRestDay'] == true;
+    final user = context.read<UserProvider>();
+    final today = dateOnly(DateTime.now());
+    final todayLog = _logs.whereType<Map>().where((l) => l['date']?.toString() == _todayKey);
+    final restedToday = todayLog.any((l) => l['rest']?.toString().trim() == 'true');
+
+    // The week slides around rest days, so today's session may be one from earlier in the plan.
+    final suggested = restedToday
+        ? null
+        : suggestedSession(
+            training: plan.training,
+            date: today,
+            logs: _logs,
+            challengeStart: user.startDate.isEmpty ? null : DateTime.tryParse(user.startDate),
+          );
+    final day = suggested == null ? null : plan.training?[suggested];
+    final ownDay = plan.training?[weekdayNames[today.weekday - 1]];
+    final isRest = restedToday || (suggested == null && ownDay?['isRestDay'] == true);
     final exList = (day?['exercises'] as List?) ?? const [];
     final sets = exList.fold<int>(
       0,
       (t, e) => t + (int.tryParse('${e is Map ? e['sets'] : ''}') ?? 3),
     );
     final session = day?['session']?.toString().trim() ?? '';
-    final hasSession = day != null && !isRest && exList.isNotEmpty;
+    final hasSession = day != null && exList.isNotEmpty;
 
     final title = isRest
         ? 'Rest day'
@@ -322,9 +415,18 @@ class _TodayScreenState extends State<TodayScreen> {
         ? 'Recovery is part of the plan'
         : 'Your plan has no session for today';
 
-    return theme.isDark
+    final hero = theme.isDark
         ? _heroDark(theme, title, meta, hasSession)
         : _heroLight(theme, title, meta, hasSession);
+    if (!hasSession) return hero;
+    final label = session.isEmpty ? 'Workout' : session;
+    return [
+      ...hero,
+      StretchCard(key: ValueKey('warm-$label'), plan: warmupFor(label)),
+      const SizedBox(height: Sp.x3),
+      StretchCard(key: ValueKey('cool-$label'), plan: cooldownFor(label)),
+      const SizedBox(height: Sp.x3),
+    ];
   }
 
   // Dark: progress ring beside today's session, then a 7-day strip.

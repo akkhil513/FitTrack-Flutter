@@ -7,6 +7,9 @@ import '../services/api_service.dart';
 import '../services/progress_stats.dart';
 import '../theme/tokens.dart';
 import '../widgets/ui.dart';
+import 'goals_screen.dart';
+import 'photos_screen.dart';
+import 'strength_screen.dart';
 
 class ProgressScreen extends StatefulWidget {
   const ProgressScreen({super.key});
@@ -95,6 +98,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: Sp.x3),
+                  const GoalsSummaryCard(),
                   const SizedBox(height: Sp.x6),
                   const FtLabel('Last 7 days'),
                   FtCard(
@@ -146,6 +151,50 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   _Trend(
                     title: 'Waist · cm',
                     points: _series(history, 'waist'),
+                  ),
+                  const SizedBox(height: Sp.x6),
+                  const FtLabel('Strength'),
+                  FtCard(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Personal records and lift trends',
+                            style: ftText(theme, size: 14, color: theme.textSecondary),
+                          ),
+                        ),
+                        FtButton(
+                          label: 'Open',
+                          secondary: true,
+                          compact: true,
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const StrengthScreen()),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: Sp.x6),
+                  const FtLabel('Photos'),
+                  FtCard(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Private progress photos and side-by-side compare',
+                            style: ftText(theme, size: 14, color: theme.textSecondary),
+                          ),
+                        ),
+                        FtButton(
+                          label: 'Open',
+                          secondary: true,
+                          compact: true,
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const PhotosScreen()),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: Sp.x6),
                   const FtLabel('Recent workouts'),
@@ -312,7 +361,7 @@ class _Trend extends StatelessWidget {
               height: 64,
               width: double.infinity,
               child: CustomPaint(
-                painter: _LinePainter(
+                painter: TrendLinePainter(
                   points: points,
                   line: theme.accent,
                   dot: theme.accent,
@@ -326,8 +375,8 @@ class _Trend extends StatelessWidget {
   }
 }
 
-class _LinePainter extends CustomPainter {
-  _LinePainter({
+class TrendLinePainter extends CustomPainter {
+  TrendLinePainter({
     required this.points,
     required this.line,
     required this.dot,
@@ -375,6 +424,6 @@ class _LinePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_LinePainter old) =>
+  bool shouldRepaint(TrendLinePainter old) =>
       old.points != points || old.line != line || old.grid != grid;
 }

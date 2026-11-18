@@ -8,8 +8,10 @@ import '../../services/api_service.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/input_decoration.dart';
 import '../../widgets/ui.dart';
+import '../goals_screen.dart';
 import '../onboarding_screen.dart';
 import '../progress_screen.dart';
+import '../supplements_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -457,6 +459,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: Sp.x3),
+          const GoalsSummaryCard(),
+          const SizedBox(height: Sp.x3),
           FtCard(
             padding: EdgeInsets.zero,
             onTap: () => Navigator.push(
@@ -497,6 +501,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     secondary: true,
                     compact: true,
                     onPressed: () => _regeneratePlan(theme),
+                  ),
+                ),
+                const FtDivider(),
+                _SettingRow(
+                  title: 'Reminders',
+                  subtitle: user.supplementReminders.isEmpty
+                      ? 'None yet'
+                      : '${user.supplementReminders.where((r) => r.enabled).length} of ${user.supplementReminders.length} on',
+                  trailing: FtButton(
+                    label: 'Manage',
+                    secondary: true,
+                    compact: true,
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const SupplementsScreen(),
+                      ),
+                    ),
                   ),
                 ),
                 const FtDivider(),

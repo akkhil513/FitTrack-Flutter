@@ -246,6 +246,162 @@ class ApiService {
     return _map(res);
   }
 
+  // ─── SUPPLEMENT REMINDERS ───────────────────
+
+  static Future<void> saveGoals(String userId, String goalsJson) async {
+    final res = await _send(
+      () => http.put(
+        Uri.parse('$baseUrl/goals/$userId'),
+        headers: _headers,
+        body: jsonEncode({'goals': goalsJson}),
+      ),
+    );
+    if (!_ok(res)) {
+      throw Exception('Could not save goals (${res.statusCode})');
+    }
+  }
+
+  static Future<void> saveSupplementReminders(
+    String userId,
+    List<Map<String, dynamic>> reminders,
+  ) async {
+    final res = await _send(
+      () => http.put(
+        Uri.parse('$baseUrl/supplements/$userId'),
+        headers: _headers,
+        body: jsonEncode({'supplementReminders': jsonEncode(reminders)}),
+      ),
+    );
+    if (!_ok(res)) {
+      throw Exception('Could not save reminders (${res.statusCode})');
+    }
+  }
+
+  /// Asks the AI for the best time of day for the named supplement(s).
+  /// Returns {"time": "HH:mm", "reason": "..."}.
+  static Future<Map<String, dynamic>> suggestSupplementTime(
+    String userId,
+    String name,
+  ) async {
+    final res = await _send(
+      () => http.post(
+        Uri.parse('$baseUrl/supplements/$userId/suggest-time'),
+        headers: _headers,
+        body: jsonEncode({'name': name}),
+      ),
+    );
+    if (!_ok(res)) {
+      throw Exception('Suggestion failed (${res.statusCode})');
+    }
+    return _map(res);
+  }
+
+  // ─── WORKOUT CHANGES ────────────────────────
+
+  /// Marks a training day as skipped (or clears the mark with skipped: false).
+  static Future<void> skipDay(
+    String userId,
+    String date, {
+    required int dayNumber,
+    bool skipped = true,
+  }) async {
+    final res = await _send(
+      () => http.post(
+        Uri.parse('$baseUrl/logs/$userId/$date/skip'),
+        headers: _headers,
+        body: jsonEncode({'skipped': skipped, 'dayNumber': dayNumber}),
+      ),
+    );
+    if (!_ok(res)) {
+      throw Exception('Could not skip the day (${res.statusCode})');
+    }
+  }
+
+  /// Asks the server to replace one exercise. Returns the updated training JSON string.
+  static Future<String> swapExercise(
+    String userId, {
+    required String day,
+    required String exercise,
+    String reason = '',
+  }) async {
+    final res = await _send(
+      () => http.post(
+        Uri.parse('$baseUrl/plans/$userId/swap'),
+        headers: _headers,
+        body: jsonEncode({'day': day, 'exercise': exercise, 'reason': reason}),
+      ),
+    );
+    final body = _map(res);
+    if (!_ok(res)) {
+      throw Exception(body['message']?.toString() ?? 'Swap failed (${res.statusCode})');
+    }
+    return body['training'].toString();
+  }
+
+  // ─── PROGRESS PHOTOS ────────────────────────
+
+  /// Asks the API for a short-lived signed upload URL for one photo.
+  static Future<({String key, String uploadUrl})> requestPhotoUpload(
+    String userId, {
+    required String date,
+    required String angle,
+    required int size,
+  }) async {
+    final res = await _send(
+      () => http.post(
+        Uri.parse('$baseUrl/photos/$userId/upload-url'),
+        headers: _headers,
+        body: jsonEncode({
+          'date': date,
+          'angle': angle,
+          'contentType': 'image/jpeg',
+          'size': size,
+        }),
+      ),
+    );
+    final body = _map(res);
+    if (!_ok(res)) {
+      throw Exception(body['message']?.toString() ?? 'Upload failed (${res.statusCode})');
+    }
+    return (key: body['key'].toString(), uploadUrl: body['uploadUrl'].toString());
+  }
+
+  /// Sends the bytes straight to S3. No app headers: the signed URL carries its own credentials,
+  /// and an extra Authorization header would break the signature.
+  static Future<void> putPhotoBytes(String uploadUrl, List<int> bytes) async {
+    final res = await http.put(
+      Uri.parse(uploadUrl),
+      headers: const {'Content-Type': 'image/jpeg'},
+      body: bytes,
+    );
+    if (!_ok(res)) {
+      throw Exception('Upload failed (${res.statusCode})');
+    }
+  }
+
+  static Future<List<dynamic>> listPhotos(String userId) async {
+    final res = await _send(
+      () => http.get(Uri.parse('$baseUrl/photos/$userId'), headers: _headers),
+    );
+    if (!_ok(res)) {
+      throw Exception('Could not load photos (${res.statusCode})');
+    }
+    final photos = _map(res)['photos'];
+    return photos is List ? photos : <dynamic>[];
+  }
+
+  static Future<void> deletePhoto(String userId, String key) async {
+    final res = await _send(
+      () => http.delete(
+        Uri.parse('$baseUrl/photos/$userId').replace(queryParameters: {'key': key}),
+        headers: _headers,
+      ),
+    );
+    if (!_ok(res)) {
+      throw Exception('Could not delete the photo (${res.statusCode})');
+    }
+  }
+
   // ─── MEAL TEMPLATES ─────────────────────────
 
   static Future<Map<String, dynamic>> getMealTemplates(String userId) async {

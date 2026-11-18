@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/plan_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../services/week_report.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/input_decoration.dart';
 import '../../widgets/ui.dart';
 
 const _weekdays = [
@@ -16,8 +19,31 @@ const _weekdays = [
   'Sunday',
 ];
 
-class PlanScreen extends StatelessWidget {
+class PlanScreen extends StatefulWidget {
   const PlanScreen({super.key});
+
+  @override
+  State<PlanScreen> createState() => _PlanScreenState();
+}
+
+class _PlanScreenState extends State<PlanScreen> {
+  final _todayKey = GlobalKey();
+  bool _scrolled = false;
+
+  void _revealToday() {
+    if (_scrolled) return;
+    _scrolled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _todayKey.currentContext;
+      if (ctx == null || !ctx.mounted) return;
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.15,
+        duration: Motion.fast,
+        curve: Motion.ease,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +62,7 @@ class PlanScreen extends StatelessWidget {
 
     final plan = planProvider.plan!;
     final todayName = _weekdays[DateTime.now().weekday - 1];
+    if (planProvider.training?[todayName] != null) _revealToday();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(Sp.x5),
@@ -55,8 +82,8 @@ class PlanScreen extends StatelessWidget {
           ),
           const SizedBox(height: Sp.x6),
 
-          if (planProvider.training?[todayName] != null) ...[
-            _TodayCard(day: todayName, data: planProvider.training![todayName]),
+          if (WeekReport.parse(plan['weekSummary']) case final report?) ...[
+            _RecapCard(report: report),
             const SizedBox(height: Sp.x6),
           ],
 
@@ -70,6 +97,7 @@ class PlanScreen extends StatelessWidget {
                     if (planProvider.training![day] != null) ...[
                       if (day != _weekdays.first) const FtDivider(),
                       _DayRow(
+                        key: day == todayName ? _todayKey : null,
                         day: day,
                         data: planProvider.training![day],
                         isToday: day == todayName,
@@ -247,76 +275,9 @@ class _TextSectionState extends State<_TextSection> {
   }
 }
 
-class _TodayCard extends StatelessWidget {
-  const _TodayCard({required this.day, required this.data});
-  final String day;
-  final dynamic data;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = context.watch<ThemeProvider>();
-    final session = data['session']?.toString() ?? day;
-    final exercises = (data['exercises'] as List? ?? []);
-    final isRest =
-        data['isRestDay'] == true ||
-        session.toLowerCase().contains('rest') ||
-        session.toLowerCase().contains('recovery');
-    final preview = exercises
-        .take(3)
-        .map((e) => e['name']?.toString() ?? '')
-        .where((n) => n.isNotEmpty)
-        .toList();
-    final more = exercises.length - preview.length;
-
-    return FtCard(
-      selected: !isRest,
-      padding: const EdgeInsets.all(Sp.x5),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Today  ·  $day',
-            style: ftText(
-              theme,
-              size: 13,
-              weight: FontWeight.w500,
-              color: isRest ? theme.textTertiary : theme.accent,
-            ),
-          ),
-          const SizedBox(height: Sp.x2),
-          Text(
-            session,
-            style: ftText(theme, size: 24, weight: FontWeight.w600),
-          ),
-          if (!isRest && exercises.isNotEmpty) ...[
-            const SizedBox(height: Sp.x1),
-            Text(
-              '${exercises.length} exercises',
-              style: ftText(theme, size: 13, color: theme.textTertiary, tabular: true),
-            ),
-            const SizedBox(height: Sp.x4),
-            for (final name in preview)
-              Padding(
-                padding: const EdgeInsets.only(bottom: Sp.x1),
-                child: Text(
-                  name,
-                  style: ftText(theme, size: 14, color: theme.textSecondary),
-                ),
-              ),
-            if (more > 0)
-              Text(
-                '+ $more more',
-                style: ftText(theme, size: 13, color: theme.textTertiary),
-              ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
 class _DayRow extends StatelessWidget {
   const _DayRow({
+    super.key,
     required this.day,
     required this.data,
     required this.isToday,
@@ -335,8 +296,15 @@ class _DayRow extends StatelessWidget {
         session.toLowerCase().contains('rest') ||
         session.toLowerCase().contains('recovery');
 
-    return Padding(
+    return Container(
       padding: const EdgeInsets.all(Sp.x4),
+      decoration: isToday
+          ? BoxDecoration(
+              color: theme.accent.withValues(alpha: theme.isDark ? 0.14 : 0.09),
+              border: Border.all(color: theme.accent, width: 1.5),
+              borderRadius: BorderRadius.circular(Rd.control),
+            )
+          : null,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -347,7 +315,7 @@ class _DayRow extends StatelessWidget {
               style: ftText(
                 theme,
                 size: 13,
-                weight: FontWeight.w500,
+                weight: FontWeight.w600,
                 color: isToday ? theme.accent : theme.textTertiary,
               ),
             ),
@@ -357,14 +325,42 @@ class _DayRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  session,
-                  style: ftText(
-                    theme,
-                    size: 15,
-                    weight: FontWeight.w500,
-                    color: isRest ? theme.textTertiary : theme.textPrimary,
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        session,
+                        style: ftText(
+                          theme,
+                          size: 15,
+                          weight: FontWeight.w500,
+                          color: isRest ? theme.textTertiary : theme.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (isToday) ...[
+                      const SizedBox(width: Sp.x2),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Sp.x2,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.accent,
+                          borderRadius: BorderRadius.circular(Rd.chip),
+                        ),
+                        child: Text(
+                          'Today',
+                          style: ftText(
+                            theme,
+                            size: 11,
+                            weight: FontWeight.w600,
+                            color: theme.accentText,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 if (!isRest && exercises.isNotEmpty) ...[
                   const SizedBox(height: Sp.x2),
@@ -384,7 +380,7 @@ class _DayRow extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: Sp.x3),
+                          const SizedBox(width: Sp.x2),
                           Text(
                             '${e['sets'] ?? ''} × ${e['reps'] ?? ''}'
                             '${(e['targetWeight']?.toString().trim().isNotEmpty ?? false) ? ' · ${e['targetWeight']} lb' : ''}',
@@ -395,6 +391,21 @@ class _DayRow extends StatelessWidget {
                               tabular: true,
                             ),
                           ),
+                          SizedBox(
+                            width: 36,
+                            height: 24,
+                            child: IconButton(
+                              padding: EdgeInsets.zero,
+                              iconSize: 18,
+                              tooltip: 'Replace ${e['name'] ?? 'exercise'}',
+                              icon: Icon(Icons.swap_horiz, color: theme.textTertiary),
+                              onPressed: () => _openSwap(
+                                context,
+                                day,
+                                e['name']?.toString() ?? '',
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -402,6 +413,169 @@ class _DayRow extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> _openSwap(BuildContext context, String day, String exercise) async {
+  if (exercise.isEmpty) return;
+  final done = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: context.read<ThemeProvider>().surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(Rd.panel)),
+    ),
+    builder: (_) => _SwapSheet(day: day, exercise: exercise),
+  );
+  if (done == true && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Replaced $exercise')),
+    );
+  }
+}
+
+class _SwapSheet extends StatefulWidget {
+  const _SwapSheet({required this.day, required this.exercise});
+  final String day;
+  final String exercise;
+
+  @override
+  State<_SwapSheet> createState() => _SwapSheetState();
+}
+
+class _SwapSheetState extends State<_SwapSheet> {
+  final _reason = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
+  Future<void> _go() async {
+    final userId = context.read<AuthProvider>().userId;
+    if (userId == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await context.read<PlanProvider>().swapExercise(
+            userId,
+            day: widget.day,
+            exercise: widget.exercise,
+            reason: _reason.text.trim(),
+          );
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = e.toString().replaceFirst('Exception: ', '');
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.watch<ThemeProvider>();
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        Sp.x5,
+        Sp.x5,
+        Sp.x5,
+        MediaQuery.of(context).viewInsets.bottom + Sp.x5,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Replace ${widget.exercise}',
+              style: ftText(t, size: 18, weight: FontWeight.w600),
+            ),
+            const SizedBox(height: Sp.x1),
+            Text(
+              'The AI picks a similar exercise for the same muscles. Its target weight starts empty.',
+              style: ftText(t, size: 13, color: t.textTertiary, height: 1.4),
+            ),
+            const SizedBox(height: Sp.x4),
+            TextField(
+              controller: _reason,
+              maxLength: 100,
+              enabled: !_busy,
+              style: ftText(t, size: 15),
+              decoration: fitTrackInput('Optional: sore shoulder, no barbell…', t)
+                  .copyWith(counterText: ''),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: Sp.x2),
+              Text(_error!, style: ftText(t, size: 13, color: t.negative)),
+            ],
+            const SizedBox(height: Sp.x4),
+            SizedBox(
+              width: double.infinity,
+              child: FtButton(label: 'Suggest replacement', loading: _busy, onPressed: _go),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecapCard extends StatelessWidget {
+  const _RecapCard({required this.report});
+  final WeekReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.watch<ThemeProvider>();
+    final shown = report.changes.take(5).toList();
+    return FtCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Week ${report.week} recap',
+            style: ftText(t, size: 15, weight: FontWeight.w600),
+          ),
+          const SizedBox(height: Sp.x1),
+          Text(
+            report.changes.isEmpty
+                ? report.sessionsLabel
+                : '${report.sessionsLabel} · ${report.increases} ${report.increases == 1 ? 'lift' : 'lifts'} going up',
+            style: ftText(t, size: 13, color: t.textSecondary, tabular: true),
+          ),
+          if (shown.isNotEmpty) const SizedBox(height: Sp.x3),
+          for (final c in shown)
+            Padding(
+              padding: const EdgeInsets.only(bottom: Sp.x1),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(c.name, style: ftText(t, size: 13, color: t.textSecondary)),
+                  ),
+                  Text(
+                    '${c.increased ? 'Up to' : 'Hold at'} ${c.weight}',
+                    style: ftText(
+                      t,
+                      size: 13,
+                      weight: FontWeight.w500,
+                      color: c.increased ? t.positive : t.textTertiary,
+                      tabular: true,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

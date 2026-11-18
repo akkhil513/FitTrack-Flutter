@@ -38,6 +38,25 @@ class PlanProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Replaces one exercise via the server and adopts the updated training plan.
+  /// Throws with a readable message when the server refuses or the AI is unavailable.
+  Future<void> swapExercise(
+    String userId, {
+    required String day,
+    required String exercise,
+    String reason = '',
+  }) async {
+    final updated = await ApiService.swapExercise(
+      userId,
+      day: day,
+      exercise: exercise,
+      reason: reason,
+    );
+    training = Map<String, dynamic>.from(jsonDecode(updated) as Map);
+    plan?['training'] = updated;
+    notifyListeners();
+  }
+
   Future<void> generatePlan(Map<String, dynamic> payload) async {
     isLoading = true;
     status = 'GENERATING';

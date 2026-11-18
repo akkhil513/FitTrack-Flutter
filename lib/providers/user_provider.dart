@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/goals.dart';
+import '../services/supplement_reminder.dart';
 import '../services/week_math.dart';
 
 class UserProvider extends ChangeNotifier {
@@ -109,6 +111,46 @@ class UserProvider extends ChangeNotifier {
     user ??= {};
     user!['measurements'] = currentJson;
     user!['measurementHistory'] = historyJson;
+    notifyListeners();
+  }
+
+  /// Supplement reminders, soonest time of day first.
+  List<SupplementReminder> get supplementReminders =>
+      SupplementReminder.parseList(user?['supplementReminders']);
+
+  /// Saves the full list. The local copy changes only after the server accepted it, so a failed
+  /// save leaves the screen showing what is actually stored (the error is rethrown).
+  Future<void> saveSupplementReminders(
+    String userId,
+    List<SupplementReminder> reminders,
+  ) async {
+    final sorted = [...reminders]..sort(SupplementReminder.compareByTime);
+    final json = sorted.map((r) => r.toJson()).toList();
+    await ApiService.saveSupplementReminders(userId, json);
+    user ??= {};
+    user!['supplementReminders'] = jsonEncode(json);
+    notifyListeners();
+  }
+
+  Goals get goals => Goals.parse(user?['goals']);
+
+  /// The date the countdown runs to: the user's event date, or the last challenge day.
+  DateTime? get goalDate {
+    DateTime? start;
+    try {
+      start = startDate.isEmpty ? null : DateTime.parse(startDate);
+    } catch (_) {
+      start = null;
+    }
+    return Goals.effectiveEventDate(goals, start, challengeDuration);
+  }
+
+  /// Saves goals. The local copy changes only after the server accepted them.
+  Future<void> saveGoals(String userId, Goals goals) async {
+    final json = jsonEncode(goals.toJson());
+    await ApiService.saveGoals(userId, json);
+    user ??= {};
+    user!['goals'] = json;
     notifyListeners();
   }
 

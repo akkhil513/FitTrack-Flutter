@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'api_service.dart';
+import 'token_store.dart';
 
 class AuthService {
   static const String _clientId = '5mqksvmvu33fqsk9e570f22jcf';
@@ -15,6 +16,31 @@ class AuthService {
 
   static const _storage = FlutterSecureStorage();
   static const _refreshKey = 'fittrack_refresh_token';
+
+  /// Secure storage first; browser localStorage when it cannot encrypt or throws.
+  static Future<String?> _readRefresh() async {
+    try {
+      final v = await _storage.read(key: _refreshKey);
+      if (v != null && v.isNotEmpty) return v;
+    } catch (_) {}
+    return FallbackTokenStore.read(_refreshKey);
+  }
+
+  static Future<void> _writeRefresh(String value) async {
+    try {
+      await _storage.write(key: _refreshKey, value: value);
+      FallbackTokenStore.delete(_refreshKey);
+    } catch (_) {
+      FallbackTokenStore.write(_refreshKey, value);
+    }
+  }
+
+  static Future<void> _clearRefresh() async {
+    try {
+      await _storage.delete(key: _refreshKey);
+    } catch (_) {}
+    FallbackTokenStore.delete(_refreshKey);
+  }
 
   /// Wire the API client so an expired token is refreshed automatically.
   static void init() {
@@ -37,7 +63,7 @@ class AuthService {
   /// there is no stored session or Cognito rejects it.
   static Future<bool> refreshSession() async {
     try {
-      final refresh = await _storage.read(key: _refreshKey);
+      final refresh = await _readRefresh();
       if (refresh == null || refresh.isEmpty) return false;
 
       final res = await http.post(
@@ -60,7 +86,7 @@ class AuthService {
       }
       // Refresh token revoked or expired: forget it.
       if (res.statusCode == 400) {
-        await _storage.delete(key: _refreshKey);
+        await _clearRefresh();
       }
     } catch (_) {
       // Offline or storage unavailable: keep the stored token, report no session.
@@ -104,11 +130,7 @@ class AuthService {
       _applyIdToken(result['IdToken']);
       final refresh = result['RefreshToken'];
       if (refresh != null) {
-        try {
-          await _storage.write(key: _refreshKey, value: refresh);
-        } catch (_) {
-          // Sign-in still works for this session without persistence.
-        }
+        await _writeRefresh(refresh);
       }
     } else {
       throw Exception(data['message'] ?? 'Login failed');
@@ -172,6 +194,6 @@ class AuthService {
     userName = null;
     idToken = null;
     ApiService.clearToken();
-    _storage.delete(key: _refreshKey);
+    _clearRefresh();
   }
 }
